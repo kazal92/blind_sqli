@@ -14,8 +14,9 @@
             "args": [
                 "-s", "http",
                 "-p", "title",
+                "-d", "test4.db",
                 "--dbms", "mysql",
-                "--dbs",
+                "--tables",
                 // "--proxy", "127.0.0.1:8080"
             ]
         }

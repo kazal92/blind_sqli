@@ -1,5 +1,4 @@
-**SQL 인젝션 발견 시 조건식을 포함한 request를 코드 내 붙혀넣으면됨
-**
+SQL 인젝션 발견 시 조건식을 포함한 request를 코드 내 붙혀넣으면됨
 ```
 usage: sqli.py [-h] [-s SCHEMA] [-p PARAMETER] [-d RESULT_DB] [--proxy PROXY] [--dbms DBMS] [--basic] [--dbs] [--tables] [--columns]
 

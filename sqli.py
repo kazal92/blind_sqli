@@ -42,7 +42,7 @@ def get_argument():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-s",dest="schema", help="http? https?")
 	parser.add_argument("-p", dest="parameter", help="target param")
-	parser.add_argument("-d", dest="result_db", help="Database name for storing results")
+	parser.add_argument("-d", dest="result_db", help="Database name for storing results ex) -d result_db.db")
 	parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
 	parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
 	parser.add_argument("--basic", action="store_true", help="Basic info extraction")

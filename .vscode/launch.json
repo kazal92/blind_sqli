@@ -14,9 +14,11 @@
             "args": [
                 "-s", "http",
                 "-p", "title",
-                "-d", "result_db.db",
+                "-d", "result_db4.db",
                 "--dbms", "mysql",
-                "--tables",
+                "-D", "bWAPP",
+                "-T", "movies",
+                "--columns",
                 // "--proxy", "127.0.0.1:8080"
             ]
         }

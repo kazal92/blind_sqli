@@ -17,9 +17,11 @@
                 "-d", "result_db.db",
                 "--dbms", "mysql",
                 "-D", "bWAPP",
-                "-T", "movies",
-                "--tables",
-                // "--proxy", "127.0.0.1:8080"
+                "-T", "'blog', 'heroes'",
+                // "--dbs",
+                // "--table",
+                "--columns",
+                "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

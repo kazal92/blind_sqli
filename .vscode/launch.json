@@ -14,14 +14,15 @@
             "args": [
                 "-s", "http",
                 "-p", "title",
-                "-d", "result_db.db",
+                "-d", "bWAPP.db",
                 "--dbms", "mysql",
-                "-D", "bWAPP",
-                "-T", "'blog', 'heroes'",
-                // "--dbs",
-                // "--table",
-                "--columns",
-                "--proxy", "127.0.0.1:8080"
+                // "-D", "bWAPP",
+                // "-T", "'blog', 'heroes'",
+                // "--basic",
+                "--dbs",
+                // "--tables",
+                // "--columns",
+                // "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

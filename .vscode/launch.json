@@ -16,12 +16,12 @@
                 "-p", "title",
                 "-d", "bWAPP.db",
                 "--dbms", "mysql",
-                // "-D", "bWAPP",
-                // "-T", "'blog', 'heroes'",
+                "-D", "bWAPP",
+                "-T", "'blog', 'heroes'",
                 // "--basic",
-                "--dbs",
+                // "--dbs",
                 // "--tables",
-                // "--columns",
+                "--columns",
                 // "--proxy", "127.0.0.1:8080"
             ]
         }

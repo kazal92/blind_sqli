@@ -13,16 +13,16 @@
             "console": "integratedTerminal",
             "args": [
                 "-s", "http",
-                "-p", "title",
-                "-d", "bWAPP.db",
-                "--dbms", "mysql",
-                "-D", "bWAPP",
-                "-T", "'blog', 'heroes'",
-                // "--basic",
+                "-p", "username",
+                "-d", "bWAPP_oracle.db",
+                "--dbms", "oracle",
+                // "-D", "bWAPP",
+                // "-T", "'blog', 'heroes'",
+                "--basic",
                 // "--dbs",
                 // "--tables",
-                "--columns",
-                // "--proxy", "127.0.0.1:8080"
+                // "--columns",
+                "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

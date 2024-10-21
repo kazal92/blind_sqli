@@ -1,4 +1,4 @@
-# Bliend SQL Injection 발견 시 데이터 추출 자동화 도구
+# Blind SQL Injection 발견 시 데이터 추출 자동화 도구
 ```
 usage: sqli.py [-h] [-s SCHEMA] [-p PARAMETER] [-d RESULT_DB] [-D SELECT_DB] [-T SELECT_TABLE] [-C SELECT_COLUMN] [--dbms DBMS] [--proxy PROXY] (--basic | --dbs | --tables | --columns)
 
@@ -26,14 +26,15 @@ BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터�
 결과 데이터는 .db 파일로 저장되며, DB나 테이블을 지정할 때 싱글쿼터를 생략 가능함 ex) "USERS, EXAMPLE_TABLE" <BR><BR>
 
 기본 정보 추출:  
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `
-![설명](images/console_result_basic.png)
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `<br><br>
+  <img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명" style="width:70%;height:auto;"><br><br>
 DB 목록 추출:  
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `
-![설명](images/console_result_dbs.png)
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `<br><br>
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_dbs.png" alt="설명" style="width:70%;height:auto;"><br><br>
+
 테이블 목록 추출:  
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`
-![설명](images/console_result_tables.png)
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`<br><br>
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_tables.png" alt="설명" style="width:70%;height:auto;"><br><br>
 컬럼 목록 추출:  
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T "'USERS', 'EXAMPLE_TABLE'"`
-![설명](images/console_result_columns.png)
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T "'USERS', 'EXAMPLE_TABLE'"`<br><br>
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_columns.png" alt="설명" style="width:70%;height:auto;"><br><br>

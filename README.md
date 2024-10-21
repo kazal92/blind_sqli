@@ -26,6 +26,8 @@ optional arguments:
   --tables          Enumerate Tables
   --columns         Enumerate columns
 ```
+
+  
 (DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음)
 ### 기본 정보 추출
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `

@@ -37,4 +37,4 @@ optional arguments:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##kazal92`
 
 ### 컬럼 목록 추출
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##kazal92 -T 'USERS', 'EXAMPLE_TABLE'`
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##kazal92 -T 'USERS', 'EXAMPLE_TABLE'` # DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음.

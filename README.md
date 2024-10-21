@@ -42,14 +42,14 @@ optional arguments:
 
 
                    
-기본 정보 추출:
+기본 정보 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `
   
-DB 목록 추출:
+DB 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `
 
-테이블 목록 추출:
+테이블 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`
 
-컬럼 목록 추출:
+컬럼 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T 'USERS', 'EXAMPLE_TABLE'`

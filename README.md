@@ -1,9 +1,9 @@
 # Blind SQL Injection 발견 시 데이터 추출 자동화 도구 wite
 
 ## 설치
-git clone https://github.com/kazal92/blind_sqli.git
-pip install -r requirements.txt
-- 사용예시 참고
+git clone https://github.com/kazal92/blind_sqli.git  
+pip install -r requirements.txt  
+- 사용예시 참고  
 
 ## HELP
 ```

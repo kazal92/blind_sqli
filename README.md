@@ -22,8 +22,6 @@ optional arguments:
 ## 사용법  
 BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가하여 사용 (URL 디코딩 안해도됨)  
   <img src="https://github.com/kazal92/blind_sqli/blob/main/images/request_string.png" alt="설명" style="width:60%;height:auto;"><br><br>
-
-
 결과 데이터는 .db 파일로 저장되며, DB나 테이블을 지정할 때 싱글쿼터를 생략 가능함 ex) "USERS, EXAMPLE_TABLE" <BR><BR>
 
 기본 정보 추출:  

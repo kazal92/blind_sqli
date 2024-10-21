@@ -1,5 +1,6 @@
 # Bliend SQL Injection 발견 시 데이터 추출 자동화 도구
 참/거짓(1=1) 조건문을 포함한 BurpSuite Reqeust 데이터를 코드 내 REQUEST_STRING 변수에 추가 후 사용
+결과값은 .db파일로 저장됨
 
 ```
 usage: sqli.py [-h] [-s SCHEMA] [-p PARAMETER] [-d RESULT_DB] [-D SELECT_DB] [-T SELECT_TABLE] [-C SELECT_COLUMN] [--dbms DBMS] [--proxy PROXY] (--basic | --dbs | --tables | --columns)

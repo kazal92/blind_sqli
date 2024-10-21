@@ -36,7 +36,7 @@ pip install -r requirements.txt
   <img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명" style="width:70%;height:auto;"><br><br>
 **DB 목록 추출:**  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `<br><br>
-<img src="https://github.com/kazal92/Code/blob/main/images/console_result_dbs.png" alt="설명" style="width:70%;height:auto;"><br><br>
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_dbs.png" alt="설명" style="width:60%;height:auto;"><br><br>
 
 **테이블 목록 추출:**  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`<br><br>

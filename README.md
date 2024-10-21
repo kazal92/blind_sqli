@@ -28,13 +28,13 @@ optional arguments:
 ```
 
 ### 기본 정보 추출
-`python sqli.py -s http -dbms oracle -p username -d oracle_result.db --basic `
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `
   
 ### DB 목록 추출
-`python sqli.py -s http -dbms oracle -p username -d oracle_result.db --dbs `
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `
 
 ### 테이블 목록 추출
-`python sqli.py -s http -dbms oracle -p username -d oracle_result.db --tables -D C##kazal92`
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##kazal92`
 
 ### 컬럼 목록 추출
-`python sqli.py -s http -dbms oracle -p username -d oracle_result.db --columns -D C##kazal92 -T 'USERS', 'EXAMPLE_TABLE'`
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##kazal92 -T 'USERS', 'EXAMPLE_TABLE'`

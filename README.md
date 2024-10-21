@@ -27,7 +27,7 @@ BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터�
 
 기본 정보 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `
-<img src="images/console_result_basic" alt="설명" width="400" height="300">  
+<img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명" width="400" height="300">  
 DB 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `
 <img src="images/console_result_dbs" alt="설명" width="400" height="300">  

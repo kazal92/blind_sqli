@@ -1,13 +1,4 @@
 # Bliend SQL Injection 발견 시 데이터 추출 자동화 도구
-참/거짓(1=1) 조건문을 포함한 BurpSuite Reqeust 데이터를  
-코드 내 REQUEST_STRING 변수에 추가 후 사용(URL Decode 할 필요없이 그대로 삽입해도됨)  
-결과 데이터는 .db 파일로 저장됨  
-
-
-
-
-
-
 ```
 usage: sqli.py [-h] [-s SCHEMA] [-p PARAMETER] [-d RESULT_DB] [-D SELECT_DB] [-T SELECT_TABLE] [-C SELECT_COLUMN] [--dbms DBMS] [--proxy PROXY] (--basic | --dbs | --tables | --columns)
 
@@ -29,7 +20,10 @@ optional arguments:
 
 
 ## 사용법  
-(DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음) USERS, EXAMPLE_TABLE
+참/거짓(1=1) 조건문을 포함한 BurpSuite Reqeust 데이터를  
+코드 내 REQUEST_STRING 변수에 추가 후 사용(URL Decode 할 필요없이 그대로 삽입해도됨)  
+결과 데이터는 .db 파일로 저장됨  
+(DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음) USERS, EXAMPLE_TABLE  
 
 기본 정보 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `

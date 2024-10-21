@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ## 사용 예시
 BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가 (URL 디코딩 안해도됨)  
   <img src="https://github.com/kazal92/blind_sqli/blob/main/images/request_string.png" alt="설명" style="width:60%;height:auto;"><br><br>
-결과 데이터는 아래와 같이 .db 파일로 저장됨
+결과 데이터는 아래와 같이 .db 파일로 저장됨  
 <img src="https://github.com/kazal92/Code/blob/main/images/result_db.png" alt="설명" style="width:40%;height:auto;"><br><br>
 기본 정보 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `<br><br>

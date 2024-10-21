@@ -27,16 +27,17 @@ optional arguments:
   --columns         Enumerate columns
 ```
 
-  
+
+## 사용법
 (DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음)
-### 기본 정보 추출
+기본 정보 추출:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `
   
-### DB 목록 추출
+DB 목록 추출:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `
 
-### 테이블 목록 추출
+테이블 목록 추출:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`
 
-### 컬럼 목록 추출
+컬럼 목록 추출:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T 'USERS', 'EXAMPLE_TABLE'`

@@ -30,6 +30,18 @@ optional arguments:
 
 ## 사용법  
 (DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음)  
+
+
+
+
+
+
+
+
+
+
+
+                   
 기본 정보 추출:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `
   

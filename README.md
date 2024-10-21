@@ -1,5 +1,5 @@
 # Blind SQL Injection 자동화 도구
-blind sqli 포인트 발견 시, BurpSuite 요청 데이터를 그대로 이용해서 데이터 출력 자동화<br><br><br><br>
+blind sqli 포인트 발견 시, BurpSuite 요청 데이터를 그대로 이용해서 데이터 출력 자동화<br><br><br>
 
 BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가 (URL 디코딩 안해도됨)  
   <img src="https://github.com/kazal92/blind_sqli/blob/main/images/request_string.png" alt="설명" style="width:60%;height:auto;"><br><br>

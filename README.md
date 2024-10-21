@@ -20,10 +20,8 @@ optional arguments:
 
 
 ## 사용법  
-참/거짓(1=1) 조건문을 포함한 BurpSuite Reqeust 데이터를  
-코드 내 REQUEST_STRING 변수에 추가 후 사용(URL Decode 할 필요없이 그대로 삽입해도됨)  
-결과 데이터는 .db 파일로 저장됨  
-(DB, 테이블 등 지정할때 싱글쿼터 안넣어도 상관없음) USERS, EXAMPLE_TABLE  
+BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가하여 사용 (URL 디코딩 없이 그대로 넣어도 상관없음)
+결과 데이터는 .db 파일로 저장되며, DB나 테이블을 지정할 때 싱글쿼터를 생략 가능함 ex) USERS, EXAMPLE_TABLE
 
 기본 정보 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `

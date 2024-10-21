@@ -26,7 +26,7 @@ BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터�
 결과 데이터는 .db 파일로 저장되며, DB나 테이블을 지정할 때 싱글쿼터를 생략 가능함 ex) "USERS, EXAMPLE_TABLE" <BR><BR>
 
 기본 정보 추출:  
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `  
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `<br>
   <img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명" width="600" height="300">  
 DB 목록 추출:  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `

@@ -20,7 +20,9 @@ optional arguments:
 
 
 ## 사용법  
-BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가하여 사용 (URL 디코딩 없이 그대로 넣어도 상관없음)
+BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가하여 사용 (URL 디코딩 안해도됨)
+
+
 결과 데이터는 .db 파일로 저장되며, DB나 테이블을 지정할 때 싱글쿼터를 생략 가능함 ex) USERS, EXAMPLE_TABLE <BR><BR>
 
 기본 정보 추출:  
@@ -33,4 +35,4 @@ DB 목록 추출:
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`
 
 컬럼 목록 추출:  
-`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T 'USERS', 'EXAMPLE_TABLE'`
+`python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T "'USERS', 'EXAMPLE_TABLE'"`

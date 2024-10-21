@@ -1,10 +1,4 @@
 # Blind SQL Injection 발견 시 데이터 추출 자동화 도구 wite
-
-## 설치
-git clone https://github.com/kazal92/blind_sqli.git  
-pip install -r requirements.txt  
-- 사용예시 참고  
-
 ## HELP
 ```
 usage: sqli.py [-h] [-s SCHEMA] [-p PARAMETER] [-d RESULT_DB] [-D SELECT_DB] [-T SELECT_TABLE] [-C SELECT_COLUMN] [--dbms DBMS] [--proxy PROXY] (--basic | --dbs | --tables | --columns)
@@ -24,6 +18,9 @@ optional arguments:
   --tables          Enumerate Tables
   --columns         Enumerate columns
 ```
+## 설치
+git clone https://github.com/kazal92/blind_sqli.git  
+pip install -r requirements.txt  
 
 ## 사용 예시
 BurpSuite 요청 데이터에 참/거짓(1=1) 조건문을 포함한 데이터를 REQUEST_STRING 변수에 추가하여 사용 (URL 디코딩 안해도됨)  

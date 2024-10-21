@@ -140,8 +140,7 @@ class SQLiteProcessor:
 		global cursor, conn
 		conn = sqlite3.connect(args.result_db) 
 		cursor = conn.cursor()
-
-		# 기본 테이블 생성 (DB, Table, Column)
+		
 		cursor.execute('CREATE TABLE IF NOT EXISTS basic_info (id INTEGER PRIMARY KEY AUTOINCREMENT, version VARCHAR(255), user VARCHAR(255), UNIQUE(Version, user))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS dbs_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), UNIQUE(db_name))')
 		cursor.execute('CREATE TABLE IF NOT EXISTS table_info (id INTEGER PRIMARY KEY AUTOINCREMENT, db_name VARCHAR(255), table_name VARCHAR(255), UNIQUE(db_name, table_name))')

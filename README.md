@@ -31,16 +31,16 @@ git clone https://github.com/kazal92/blind_sqli.git
 pip install -r requirements.txt  
 ```
 ## 사용 예시
-기본 정보 추출:  
+**기본 정보 추출:**
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --basic `<br><br>
   <img src="https://github.com/kazal92/Code/blob/main/images/console_result_basic.png" alt="설명" style="width:70%;height:auto;"><br><br>
-DB 목록 추출:  
+**DB 목록 추출:**
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --dbs `<br><br>
 <img src="https://github.com/kazal92/Code/blob/main/images/console_result_dbs.png" alt="설명" style="width:70%;height:auto;"><br><br>
 
-테이블 목록 추출:  
+**테이블 목록 추출:**
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --tables -D C##KAZAL92`<br><br>
 <img src="https://github.com/kazal92/Code/blob/main/images/console_result_tables.png" alt="설명" style="width:70%;height:auto;"><br><br>
-컬럼 목록 추출:  
+**컬럼 목록 추출:**
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T "'USERS', 'EXAMPLE_TABLE'"`<br><br>
 <img src="https://github.com/kazal92/Code/blob/main/images/console_result_columns.png" alt="설명" style="width:70%;height:auto;"><br><br>

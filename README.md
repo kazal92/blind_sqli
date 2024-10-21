@@ -1,4 +1,4 @@
-# Bliend SQL Injection 발견 시 데이터 추출 자동화 도구
+# Blind SQL Injection 발견 시 데이터 추출 자동화 도구
 ```
 usage: sqli.py [-h] [-s SCHEMA] [-p PARAMETER] [-d RESULT_DB] [-D SELECT_DB] [-T SELECT_TABLE] [-C SELECT_COLUMN] [--dbms DBMS] [--proxy PROXY] (--basic | --dbs | --tables | --columns)
 

@@ -43,3 +43,10 @@ pip install -r requirements.txt
 **컬럼 목록 추출:**  
 `python sqli.py -s http --dbms oracle -p username -d oracle_result.db --columns -D C##KAZAL92 -T "'USERS', 'EXAMPLE_TABLE'"`<br><br>
 <img src="https://github.com/kazal92/Code/blob/main/images/console_result_columns.png" alt="설명" style="width:70%;height:auto;"><br><br>
+
+## 추가될 기능
+1. Request 입력한 파일 값 받아오기
+2. DB, TABLE, COLUMN 외 데이터 출력 구현
+3. 다른 데이터베이스 페이로드 생성 # !! MYSQL, ORACLE 완료
+4. --dump 덤프 옵션 추가
+등등

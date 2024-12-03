@@ -49,4 +49,5 @@ pip install -r requirements.txt
 2. DB, TABLE, COLUMN 외 데이터 출력 구현
 3. 다른 데이터베이스 페이로드 생성 # !! MYSQL, ORACLE 완료
 4. --dump 덤프 옵션 추가
+5. 우회패턴 추가
 등등

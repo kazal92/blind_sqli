@@ -1,7 +1,7 @@
 # Blind SQL Injection 자동화 도구
 **blind sqli 포인트 발견 시, BurpSuite 요청 데이터를 그대로 이용해서 데이터 출력 자동화**<br>
 취약한 파라미터에 True 조건식 입력 후 Brup 요청 값을 그대로 REQUEST_STRING 변수에 추가 (URL Decode 필요없음)<br>
-ex) True 조건식 : `' and 1=1 -- `<br>
+**ex)** True 조건식 : `' and 1=1 -- `<br>
   <img src="https://github.com/kazal92/blind_sqli/blob/main/images/request_string.png" alt="설명" style="width:60%;height:auto;"><br><br>
 결과 데이터 Console에 텍스트로 출력되며 아래와 같이 .db 파일로도 저장 가능함<br>
 <img src="https://github.com/kazal92/Code/blob/main/images/result_db.png" alt="설명" style="width:40%;height:auto;">

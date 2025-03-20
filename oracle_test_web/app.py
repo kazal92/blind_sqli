@@ -11,23 +11,25 @@ connection = oracledb.connect(user="C##kazal92", password="1234", dsn=dsn)
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    # 요청 방식에 따라 source만 결정
+    if request.method == 'POST':
+        data = request.form
+    else:
+        data = request.args
+
+    username = data.get('username')
+    password = data.get('password')
     message = ""
-    username = request.values.get('username')
-    password = request.values.get('password')
 
-    # SQL 인젝션이 가능한 쿼리
-    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-            result = cursor.fetchone()
-
-            if result:
-                message = "Login successful!"
-            else:
-                message = "Invalid credentials!"
-    except oracledb.DatabaseError as e:
-        message = f"Database error: {str(e)}"
+    if username and password:
+        query = "SELECT * FROM users WHERE username = :username AND password = :password"
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, {'username': username, 'password': password})
+                result = cursor.fetchone()
+                message = "Login successful!" if result else "Invalid credentials!"
+        except oracledb.DatabaseError as e:
+            message = f"Database error: {str(e)}"
 
     return render_template('login.html', message=message)
 

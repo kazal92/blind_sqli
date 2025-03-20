@@ -10,12 +10,29 @@
 <body>
 	account : kazal92 / 1234 
 	<h2>Login (Form 방식)</h2>
-	<form method="GET">
-		<input type="text" name="username"><br>
-		<input type="password" name="password"><br>
-		<input type="submit" value="Login">
+	<form id="loginForm" method="GET">
+	  <input type="text" name="username" placeholder="Username"><br>
+	  <input type="password" name="password" placeholder="Password"><br>
+	  <button type="button" onclick="submitForm('GET')">GET 방식 로그인</button>
+	  <button type="button" onclick="submitForm('POST')">POST 방식 로그인</button>
 	</form>
+	
 	<p>{{ message }}</p>
+	
+	<script>
+	  function submitForm(method) {
+		const form = document.getElementById('loginForm');
+		form.method = method;
+		if (method === 'POST') {
+        // 주소창에서 쿼리스트링 제거
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    form.submit();
+		form.submit();
+	  }
+	</script>
     
 	<hr>
 

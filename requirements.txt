@@ -1,2 +1,4 @@
 urllib3
 requests
+cx_oracle
+flask

@@ -8,15 +8,44 @@
 </head>
 
 <body>
-	<h2>Login</h2>
-	<form method="POST">
-		<label for="username">Username:</label>
-		<input type="text" name="username" id="username"><br>
-		<label for="password">Password:</label>
-		<input type="password" name="password" id="password"><br>
+	account : kazal92 / 1234 
+	<h2>Login (Form 방식)</h2>
+	<form method="GET">
+		<input type="text" name="username"><br>
+		<input type="password" name="password"><br>
 		<input type="submit" value="Login">
 	</form>
 	<p>{{ message }}</p>
+    
+	<hr>
+
+	<h2>Login (JSON 요청)</h2>
+	<form id="json-login-form">
+		<input type="text" id="json-username"><br>
+		<input type="password" id="json-password"><br>
+		<button type="button" onclick="sendJsonLogin()">Login (JSON)</button>
+	</form>
+	<pre id="json-response"></pre>
+
+	<script>
+		function sendJsonLogin() {
+			const username = document.getElementById('json-username').value;
+			const password = document.getElementById('json-password').value;
+
+			fetch('/api/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password })
+			})
+			.then(response => response.json())
+			.then(data => {
+				document.getElementById('json-response').textContent = JSON.stringify(data, null, 2);
+			})
+			.catch(err => {
+				document.getElementById('json-response').textContent = 'Error: ' + err;
+			});
+		}
+	</script>
 </body>
 
 </html>

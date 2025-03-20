@@ -1,13 +1,13 @@
-from flask import Flask, request, render_template
-import cx_Oracle
-# cx_Oracle.init_oracle_client(lib_dir="/Users/jjun/Downloads/instantclient_19_8")
+from flask import Flask, request, render_template, jsonify
+import oracledb
 
 app = Flask(__name__)
 
 # 오라클 데이터베이스 연결 정보
-dsn = cx_Oracle.makedsn("192.168.219.100", 1521, service_name="xe")  # 회사
-# dsn = cx_Oracle.makedsn("192.168.0.32", 1521, service_name="xe")  # 삐집
-connection = cx_Oracle.connect(user="C##kazal92", password="1234", dsn=dsn)
+dsn = "192.168.219.100/XE"  # 회사
+
+# oracledb로 연결
+connection = oracledb.connect(user="C##kazal92", password="1234", dsn=dsn)
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -26,10 +26,40 @@ def login():
                 message = "Login successful!"
             else:
                 message = "Invalid credentials!"
-    except cx_Oracle.DatabaseError as e:
+    except oracledb.DatabaseError as e:
         message = f"Database error: {str(e)}"
 
     return render_template('login.html', message=message)
 
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            result = cursor.fetchone()
+
+            if result:
+                return jsonify({
+                    "status": 200,
+                    "message": "Login successful!",
+                    "username": username
+                })
+            else:
+                return jsonify({
+                    "status": 401,
+                    "message": "Invalid credentials!"
+                })
+    except oracledb.DatabaseError as e:
+        return jsonify({
+            "status": 500,
+            "message": f"Database error: {str(e)}"
+        })
+
 if __name__ == "__main__":
-    app.run('0.0.0.0',port=5001,debug=True)
+    app.run('0.0.0.0', port=5001, debug=True)

@@ -445,7 +445,7 @@ def query_start():
 			else:
 				result_data[list(name_tmp)[0]] = result_tmp
 			print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' {Colors.END} : {Colors.GREEN}{result_data[select_table_one]}{Colors.END}" if select_table_one else f"{Colors.LIGHT_BLUE}[*] '{list(name_tmp)[0]}' 데이터 : {result_data[list(name_tmp)[0]]}{Colors.END}")
-		result_tmp = [] # 레코드 모두 추출 후 초기화
+		result_tmp = [] # 레코드 모두 추출 후 초기화sss
 
 	print(f"\n{Colors.LIGHT_RED}{Colors.BOLD}{Colors.UNDERLINE}[*] 최종 결과{Colors.END}")
 	for key, value in result_data.items(): 

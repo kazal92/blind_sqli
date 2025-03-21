@@ -14,14 +14,15 @@
             "args": [
                 "-s", "http",
                 "-p", "username",
-                "-d", "oracle2.db",
+                "-d", "oracle.db",
                 "--dbms", "oracle",
-                // "-D", "C##KAZAL92",
-                // "-T", "'USERS', 'EXAMPLE_TABLE'",
-                "--basic",
+
+                "-D", "C##KAZAL92",
+                "-T", "'USERS1', 'USERS'",
+                // "--basic",
                 // "--dbs",
                 // "--tables",
-                // "--columns",
+                "--columns",
                 // "--proxy", "127.0.0.1:8080"
             ]
         }

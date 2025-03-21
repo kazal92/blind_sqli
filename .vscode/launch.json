@@ -14,7 +14,7 @@
             "args": [
                 "-s", "http",
                 "-p", "username",
-                "-d", "oracle.db",
+                "-d", "oracle2.db",
                 "--dbms", "oracle",
                 // "-D", "C##KAZAL92",
                 // "-T", "'USERS', 'EXAMPLE_TABLE'",
@@ -22,7 +22,7 @@
                 // "--dbs",
                 // "--tables",
                 // "--columns",
-                "--proxy", "127.0.0.1:8080"
+                // "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

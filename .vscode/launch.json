@@ -13,16 +13,17 @@
             "console": "integratedTerminal",
             "args": [
                 "-s", "http",
-                "-p", "site_code",
-                "-d", "result.db",
+                "-p", "item",
+                "-d", "result_CCHB.db",
                 "--dbms", "db2",
-
-                "-D", "EAIUSER",
-                "-T", "'TBL_ACCOUNT', 'TBL_EM_CCB'",
+                // "-D", "CNTSUSER", //'AMTSUSER','CNTSUSER','EAIUSER','NULLID','SECDBI','SQLJ','SYSCAT','SYSFUN','SYSIBM','SYSIBMADM','SYSIBMINTERNAL','SYSIBMTS','SYSPROC','SYSPUBLIC','SYSSTAT','SYSTOOLS','TEMP','TEST','XPERT','inp30'",
+                // "-T", "'TMP_WORK'",
+                // "-C", "'test', 'test2'",
                 // "--basic",
-                // "--dbs",
+                "--dbs",
                 // "--tables",
-                "--columns",
+                // "--columns",
+                // "--dump",
                 "--proxy", "127.0.0.1:8080"
             ]
         }

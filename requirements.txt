@@ -1,3 +1,5 @@
 urllib3
 requests
 flask
+ibm_db
+oracledb

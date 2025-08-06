@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Login</title>
+</head>
+
+<body>
+
+	<!-- 🔥 DB 연결 테스트 버튼 -->
+	<button onclick="testDB()">🧪 Oracle DB 연결 테스트</button>
+	<p id="db-status">[ DB 상태: 아직 확인 안됨 ]</p>
+
+	<script>
+		function testDB() {
+			const statusElem = document.getElementById('db-status');
+			statusElem.textContent = "Oracle DB 연결 중...";
+
+			fetch('/api/ping-db')
+				.then(res => res.json())
+				.then(data => {
+					statusElem.textContent = `[ DB 상태: ${data.message} ]`;
+				})
+				.catch(err => {
+					statusElem.textContent = `[ DB 상태: 오류 발생 - ${err} ]`;
+				});
+		}
+	</script>
+
+	<hr>
+
+	account : kazal92 / 1234
+	<h2>Login (Form 방식)</h2>
+	<form id="loginForm" method="GET">
+		<input type="text" name="username" placeholder="Username"><br>
+		<input type="password" name="password" placeholder="Password"><br>
+		<button type="button" onclick="submitForm('GET')">GET 방식 로그인</button>
+		<button type="button" onclick="submitForm('POST')">POST 방식 로그인</button>
+	</form>
+
+	<p>{{ message }}</p>
+
+	<script>
+		function submitForm(method) {
+			const form = document.getElementById('loginForm');
+			form.method = method;
+			if (method === 'POST') {
+				const cleanUrl = window.location.origin + window.location.pathname;
+				window.history.replaceState({}, document.title, cleanUrl);
+			}
+			form.submit();
+		}
+	</script>
+
+	<hr>
+
+	<h2>Login (JSON 요청)</h2>
+	<form id="json-login-form">
+		<input type="text" id="json-username"><br>
+		<input type="password" id="json-password"><br>
+		<button type="button" onclick="sendJsonLogin()">Login (JSON)</button>
+	</form>
+	<pre id="json-response"></pre>
+
+	<script>
+		function sendJsonLogin() {
+			const username = document.getElementById('json-username').value;
+			const password = document.getElementById('json-password').value;
+
+			fetch('/api/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password })
+			})
+				.then(response => response.json())
+				.then(data => {
+					document.getElementById('json-response').textContent = JSON.stringify(data, null, 2);
+				})
+				.catch(err => {
+					document.getElementById('json-response').textContent = 'Error: ' + err;
+				});
+		}
+	</script>
+</body>
+
+</html>

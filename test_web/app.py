@@ -9,7 +9,9 @@ def get_connection():
     dsn = "192.168.219.100/XE"
     return oracledb.connect(user="C##kazal92", password="1234", dsn=dsn)
 
-# DB2 연결
+# DB2 전역 커넥션
+db2_conn = None
+
 DB2_CONN_STR = (
     "DATABASE=testdb;"
     "HOSTNAME=127.0.0.1;"
@@ -20,7 +22,14 @@ DB2_CONN_STR = (
 )
 
 def get_db2_connection():
-    return ibm_db.connect(DB2_CONN_STR, "", "")
+    global db2_conn
+    try:
+        if db2_conn is None or not ibm_db.active(db2_conn):
+            db2_conn = ibm_db.connect(DB2_CONN_STR, "", "")
+    except Exception as e:
+        print(f"[DB2] 연결 실패: {e}")
+        db2_conn = None
+    return db2_conn
 
 # 🔹 DB2 로그인 페이지
 @app.route('/db2', methods=['GET', 'POST'])
@@ -41,8 +50,7 @@ def db2_login():
             stmt = ibm_db.prepare(conn, query)
             ibm_db.execute(stmt)
             result = ibm_db.fetch_assoc(stmt)
-            ibm_db.close(conn)
-            message = "Login successful!" if result else "Invalid credentials!"
+            message = "Login 성공!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! " if result else "Login 실패"
         except Exception as e:
             message = f"DB2 error: {str(e)}"
 
@@ -61,7 +69,6 @@ def db2_api_login():
         stmt = ibm_db.prepare(conn, query)
         ibm_db.execute(stmt)
         result = ibm_db.fetch_assoc(stmt)
-        ibm_db.close(conn)
 
         if result:
             return jsonify({"status": 200, "message": "Login successful!", "username": username})
@@ -70,13 +77,12 @@ def db2_api_login():
     except Exception as e:
         return jsonify({"status": 500, "message": f"DB2 error: {str(e)}"})
 
-# 🔹 DB2 연결 테스트 (이미 있을 수 있음)
+# 🔹 DB2 연결 테스트
 @app.route('/api/ping-db2')
 def ping_db2():
     try:
         conn = get_db2_connection()
         ibm_db.exec_immediate(conn, "SELECT 1 FROM sysibm.sysdummy1")
-        ibm_db.close(conn)
         return jsonify({"status": "success", "message": "DB2 연결 성공!"})
     except Exception as e:
         return jsonify({"status": "fail", "message": f"DB2 연결 실패: {str(e)}"})

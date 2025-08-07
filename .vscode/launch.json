@@ -13,18 +13,18 @@
             "console": "integratedTerminal",
             "args": [
                 "-s", "http",
-                "-p", "item",
-                "-d", "result_CCHB.db",
+                "-p", "password",
+                "-d", "result_test.db",
                 "--dbms", "db2",
-                // "-D", "CNTSUSER", //'AMTSUSER','CNTSUSER','EAIUSER','NULLID','SECDBI','SQLJ','SYSCAT','SYSFUN','SYSIBM','SYSIBMADM','SYSIBMINTERNAL','SYSIBMTS','SYSPROC','SYSPUBLIC','SYSSTAT','SYSTOOLS','TEMP','TEST','XPERT','inp30'",
-                // "-T", "'TMP_WORK'",
-                // "-C", "'test', 'test2'",
+                "-D", "DB2INST1", //'AMTSUSER','CNTSUSER','EAIUSER','NULLID','SECDBI','SQLJ','SYSCAT','SYSFUN','SYSIBM','SYSIBMADM','SYSIBMINTERNAL','SYSIBMTS','SYSPROC','SYSPUBLIC','SYSSTAT','SYSTOOLS','TEMP','TEST','XPERT','inp30'",
+                "-T", "EMPLOYEES",
+                "-C", "EMP_ID, EMP_NAME, DEPARTMENT, EMAIL",
                 // "--basic",
-                "--dbs",
+                // "--dbs",
                 // "--tables",
                 // "--columns",
-                // "--dump",
-                "--proxy", "127.0.0.1:8080"
+                "--dump",
+                // "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

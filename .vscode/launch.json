@@ -14,17 +14,17 @@
             "args": [
                 "-s", "http",
                 "-p", "password",
-                "-d", "result_test.db",
+                "-d", "test2.db",
                 "--dbms", "db2",
-                "-D", "DB2INST1", //'AMTSUSER','CNTSUSER','EAIUSER','NULLID','SECDBI','SQLJ','SYSCAT','SYSFUN','SYSIBM','SYSIBMADM','SYSIBMINTERNAL','SYSIBMTS','SYSPROC','SYSPUBLIC','SYSSTAT','SYSTOOLS','TEMP','TEST','XPERT','inp30'",
-                "-T", "EMPLOYEES",
-                "-C", "EMP_ID, EMP_NAME, DEPARTMENT, EMAIL",
+                "-D", "TEST2", //'AMTSUSER','CNTSUSER','EAIUSER','NULLID','SECDBI','SQLJ','SYSCAT','SYSFUN','SYSIBM','SYSIBMADM','SYSIBMINTERNAL','SYSIBMTS','SYSPROC','SYSPUBLIC','SYSSTAT','SYSTOOLS','TEMP','TEST','XPERT','inp30'",
+                "-T", "USERS",
+                "-C", "NAME",
                 // "--basic",
                 // "--dbs",
                 // "--tables",
                 // "--columns",
                 "--dump",
-                // "--proxy", "127.0.0.1:8080"
+                "--proxy", "127.0.0.1:8080"
             ]
         }
     ]

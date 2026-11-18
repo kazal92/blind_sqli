@@ -1,5 +1,1 @@
-urllib3
-requests
-flask
-ibm_db
-oracledb
+requests>=2.32.3,<3

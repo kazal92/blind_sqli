@@ -1,91 +1,100 @@
-from flask import Flask, request, render_template, jsonify
-import oracledb
-import ibm_db
+"""DB2 SQL Injection 실습 전용 서버. SQL 문자열 조합은 실습을 위해 유지한다."""
 
-app = Flask(__name__)
+import os
 
-# Oracle 연결
-def get_connection():
-    dsn = "192.168.219.100/XE"
-    return oracledb.connect(user="C##kazal92", password="1234", dsn=dsn)
+from flask import Flask, g, jsonify, render_template, request
 
-# DB2 전역 커넥션
-db2_conn = None
 
-DB2_CONN_STR = (
-    "DATABASE=testdb;"
-    "HOSTNAME=127.0.0.1;"
-    "PORT=50000;"
-    "PROTOCOL=TCPIP;"
-    "UID=db2inst1;"
-    "PWD=wnsgh123@@;"
-)
+def create_app(driver=None):
+    app = Flask(__name__)
 
-def get_db2_connection():
-    global db2_conn
-    try:
-        if db2_conn is None or not ibm_db.active(db2_conn):
-            db2_conn = ibm_db.connect(DB2_CONN_STR, "", "")
-    except Exception as e:
-        print(f"[DB2] 연결 실패: {e}")
-        db2_conn = None
-    return db2_conn
+    def connection():
+        if "db2" not in g:
+            db_driver = driver
+            if db_driver is None:
+                import ibm_db
 
-# 🔹 DB2 로그인 페이지
-@app.route('/db2', methods=['GET', 'POST'])
-def db2_login():
-    if request.method == 'POST':
-        data = request.form
-    else:
-        data = request.args
+                db_driver = ibm_db
+            required = ["DB2_DATABASE", "DB2_USER", "DB2_PASSWORD"]
+            if any(not os.environ.get(key) for key in required):
+                raise RuntimeError("DB2 환경변수가 필요합니다.")
+            conn_string = (
+                f"DATABASE={os.environ['DB2_DATABASE']};"
+                f"HOSTNAME={os.environ.get('DB2_HOST', '127.0.0.1')};"
+                f"PORT={os.environ.get('DB2_PORT', '50000')};PROTOCOL=TCPIP;"
+                f"UID={os.environ['DB2_USER']};PWD={os.environ['DB2_PASSWORD']};"
+            )
+            g.db_driver = db_driver
+            g.db2 = db_driver.connect(conn_string, "", "")
+        return g.db_driver, g.db2
 
-    username = data.get('username')
-    password = data.get('password')
-    message = ""
+    @app.teardown_appcontext
+    def close_connection(error):
+        conn = g.pop("db2", None)
+        db_driver = g.pop("db_driver", None)
+        if conn is not None:
+            db_driver.close(conn)
 
-    if username and password:
-        query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+    def login(username, password):
+        db_driver, conn = connection()
+        # 실습의 취약 지점. 일반 서비스의 로그인 코드로 사용하지 않는다.
+        sql = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+        statement = db_driver.prepare(conn, sql)
         try:
-            conn = get_db2_connection()
-            stmt = ibm_db.prepare(conn, query)
-            ibm_db.execute(stmt)
-            result = ibm_db.fetch_assoc(stmt)
-            message = "Login 성공!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! " if result else "Login 실패"
-        except Exception as e:
-            message = f"DB2 error: {str(e)}"
+            db_driver.execute(statement)
+            return bool(db_driver.fetch_assoc(statement))
+        finally:
+            db_driver.free_stmt(statement)
 
-    return render_template('db2.html', message=message)
+    @app.route("/db2", methods=["GET", "POST"])
+    def db2_login():
+        data = request.form if request.method == "POST" else request.args
+        username, password = data.get("username"), data.get("password")
+        message = ""
+        if username and password:
+            try:
+                success = login(username, password)
+                message = (
+                    "Login 성공!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! " if success else "Login 실패"
+                )
+            except Exception:
+                return render_template("db2.html", message="DB2 연결 또는 쿼리 실행 실패"), 500
+        return render_template("db2.html", message=message)
 
-# 🔹 DB2 JSON API 로그인
-@app.route('/api/db2', methods=['POST'])
-def db2_api_login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    @app.route("/api/db2", methods=["POST"])
+    def db2_api_login():
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not all(
+            isinstance(data.get(key), str) and data[key] for key in ["username", "password"]
+        ):
+            return jsonify(status=400, message="username과 password 문자열이 필요합니다."), 400
+        try:
+            success = login(data["username"], data["password"])
+        except Exception:
+            return jsonify(status=500, message="DB2 연결 또는 쿼리 실행 실패"), 500
+        # 기존 실습 응답 계약: 로그인 실패도 HTTP 200, 결과는 JSON status에 표시.
+        if success:
+            return jsonify(status=200, message="Login successful! " + "!" * 40)
+        return jsonify(status=401, message="Invalid credentials!")
 
-    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-    try:
-        conn = get_db2_connection()
-        stmt = ibm_db.prepare(conn, query)
-        ibm_db.execute(stmt)
-        result = ibm_db.fetch_assoc(stmt)
+    @app.route("/api/ping-db2")
+    def ping_db2():
+        try:
+            db_driver, conn = connection()
+            statement = db_driver.exec_immediate(conn, "SELECT 1 FROM sysibm.sysdummy1")
+            db_driver.free_stmt(statement)
+            return jsonify(status="success", message="DB2 연결 성공!")
+        except Exception:
+            return jsonify(status="fail", message="DB2 연결 실패"), 500
 
-        if result:
-            return jsonify({"status": 200, "message": "Login successful!", "username": username})
-        else:
-            return jsonify({"status": 401, "message": "Invalid credentials!"})
-    except Exception as e:
-        return jsonify({"status": 500, "message": f"DB2 error: {str(e)}"})
+    return app
 
-# 🔹 DB2 연결 테스트
-@app.route('/api/ping-db2')
-def ping_db2():
-    try:
-        conn = get_db2_connection()
-        ibm_db.exec_immediate(conn, "SELECT 1 FROM sysibm.sysdummy1")
-        return jsonify({"status": "success", "message": "DB2 연결 성공!"})
-    except Exception as e:
-        return jsonify({"status": "fail", "message": f"DB2 연결 실패: {str(e)}"})
+
+app = create_app()
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(
+        host=os.environ.get("LAB_HOST", "127.0.0.1"),
+        port=int(os.environ.get("LAB_PORT", "5001")),
+        debug=False,
+    )

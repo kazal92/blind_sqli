@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.db
+!lab/Dockerfile.db
+*.db-journal
+*.db-wal
+*.db-shm
+requests/
+!examples/request.http
+lab/results/

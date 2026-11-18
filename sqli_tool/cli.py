@@ -79,7 +79,8 @@ def get_arguments(argv=None):
         "--max-rows", type=positive_int, default=1000, help="행 수 상한 (초과하면 중단)"
     )
     parser.add_argument(
-        "--threshold", type=positive_int, default=20, help="거짓 기준 응답보다 커야 하는 바이트 수"
+        "--threshold", type=positive_int, default=20,
+        help="초기 참·거짓 크기 범위 사이에 필요한 최소 간격(바이트, 이 값 초과)",
     )
     parser.add_argument(
         "--insecure", action="store_true", help="실습 환경의 HTTPS 인증서 검증 생략"

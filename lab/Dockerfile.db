@@ -1,2 +1,0 @@
-FROM mysql:8.4
-COPY lab/init.sql /docker-entrypoint-initdb.d/01-lab.sql

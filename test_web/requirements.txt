@@ -1,3 +1,0 @@
--r ../requirements.txt
-Flask>=3.0,<4
-ibm_db>=3.2,<4

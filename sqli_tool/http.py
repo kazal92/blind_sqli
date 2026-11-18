@@ -1,15 +1,39 @@
 """원본 요청을 보존하고 파라미터 하나만 교체하여 전송한다."""
 
-import copy
 import json
 from dataclasses import dataclass
+from decimal import Decimal
+from email.message import Message
 from urllib.parse import parse_qsl, urlsplit
 
 import requests
 
+from .targets import (
+    TargetError,
+    json_bytes,
+    json_path,
+    json_replace,
+    json_value,
+    parse_xml,
+    xml_bytes,
+    xml_replace,
+    xml_target,
+)
+
 
 class RequestError(ValueError):
     pass
+
+
+def reject_json_constant(value):
+    raise RequestError("JSON NaN·Infinity 값은 지원하지 않습니다.")
+
+
+def utf8_content_type(value):
+    header = Message()
+    header["Content-Type"] = value
+    header.set_param("charset", "utf-8", header="Content-Type", replace=True)
+    return str(header["Content-Type"])
 
 
 def json_object(pairs):
@@ -31,23 +55,40 @@ class ParsedRequest:
     location: str
     parameter: str
     condition: str
+    body_kind: str = ""
+    path: tuple = ()
 
     def arguments(self, condition):
         query = list(self.query)
-        body = copy.deepcopy(self.body)
+        body = self.body
         if self.location == "query":
-            query = [(key, condition if key == self.parameter else value) for key, value in query]
+            query = [
+                (key, condition if key == self.parameter else value)
+                for key, value in query
+            ]
         elif self.location == "json":
-            body[self.parameter] = condition
+            body = json_replace(self.body, self.path, condition)
+        elif self.location == "xml":
+            body = xml_replace(self.body, self.parameter, condition)
         else:
-            body = [(key, condition if key == self.parameter else value) for key, value in body]
+            body = [
+                (key, condition if key == self.parameter else value)
+                for key, value in body
+            ]
         result = {"params": query, "headers": dict(self.headers)}
         if self.method == "POST":
-            result["json" if self.location == "json" else "data"] = body
+            if self.body_kind == "json":
+                result["data"] = json_bytes(body)
+            elif self.body_kind == "xml":
+                result["data"] = (
+                    body if self.location == "xml" else xml_bytes(self.body)
+                )
+            else:
+                result["data"] = body
         return result
 
 
-def parse_request(raw, protocol, parameter):
+def parse_request(raw, protocol, parameter, location="auto"):
     raw = raw.replace("\r\n", "\n").lstrip("\n")
     head, _, body_text = raw.partition("\n\n")
     lines = head.splitlines()
@@ -76,34 +117,76 @@ def parse_request(raw, protocol, parameter):
         raise RequestError("HTTP 요청 경로 형식을 확인하세요.") from exc
     if split.scheme or split.netloc or not target.startswith("/") or split.fragment:
         raise RequestError("요청 경로는 /로 시작하는 상대 경로여야 합니다.")
+    if headers.get("content-encoding", "identity").lower() != "identity":
+        raise RequestError(
+            "압축된 요청 본문은 지원하지 않습니다. 압축을 해제한 요청을 저장하세요."
+        )
     query = parse_qsl(split.query, keep_blank_values=True)
-    if method == "GET":
-        data, location = query, "query"
-        if body_text.strip():
-            raise RequestError("GET 요청 본문은 지원하지 않습니다.")
-        values = [value for key, value in data if key == parameter]
-    else:
-        content_type = headers.get("content-type", "").split(";", 1)[0].strip().lower()
-        if content_type == "application/json":
-            try:
-                data = json.loads(body_text, object_pairs_hook=json_object)
-            except json.JSONDecodeError as exc:
-                raise RequestError("JSON 본문 형식을 확인하세요.") from exc
-            if not isinstance(data, dict):
-                raise RequestError("JSON 본문은 객체여야 합니다.")
-            location = "json"
-            values = [data[parameter]] if parameter in data else []
-        elif content_type == "application/x-www-form-urlencoded":
-            data = parse_qsl(body_text.strip(), keep_blank_values=True)
-            location = "form"
-            values = [value for key, value in data if key == parameter]
+    body_kind, data, path = "", None, ()
+    try:
+        if method == "GET":
+            if body_text.strip():
+                raise RequestError("GET 요청 본문은 지원하지 않습니다.")
+            if location not in ("auto", "query"):
+                raise RequestError("GET 대상 위치는 query여야 합니다.")
+            location = "query"
         else:
-            raise RequestError("POST는 JSON 또는 application/x-www-form-urlencoded만 지원합니다.")
+            content_type = (
+                headers.get("content-type", "").split(";", 1)[0].strip().lower()
+            )
+            if content_type == "application/json" or content_type.endswith("+json"):
+                try:
+                    data = json.loads(
+                        body_text,
+                        object_pairs_hook=json_object,
+                        parse_constant=reject_json_constant,
+                        parse_float=Decimal,
+                    )
+                    json_bytes(data)
+                except RequestError:
+                    raise
+                except (ValueError, RecursionError) as exc:
+                    raise RequestError("JSON 본문 형식을 확인하세요.") from exc
+                body_kind = "json"
+                headers["content-type"] = utf8_content_type(headers["content-type"])
+            elif content_type == "application/x-www-form-urlencoded":
+                data, body_kind = (
+                    parse_qsl(body_text.strip(), keep_blank_values=True),
+                    "form",
+                )
+                headers["content-type"] = utf8_content_type(headers["content-type"])
+            elif content_type in (
+                "application/xml",
+                "text/xml",
+            ) or content_type.endswith("+xml"):
+                data, body_kind = parse_xml(body_text), "xml"
+                headers["content-type"] = utf8_content_type(headers["content-type"])
+            elif body_text.strip() or location != "query":
+                raise RequestError("POST 본문은 폼·JSON·XML만 지원합니다.")
+            if location == "auto":
+                location = body_kind
+            if location != "query" and location != body_kind:
+                raise RequestError(
+                    "--location이 요청 본문의 Content-Type과 맞지 않습니다."
+                )
+        if location == "query":
+            values = [value for key, value in query if key == parameter]
+        elif location == "form":
+            values = [value for key, value in data if key == parameter]
+        elif location == "json":
+            path = json_path(data, parameter)
+            values = [json_value(data, path)]
+        elif location == "xml":
+            values = [xml_target(data, parameter)[2]]
+        else:
+            raise RequestError("대상 파라미터 위치를 확인하세요.")
+    except TargetError as exc:
+        raise RequestError(str(exc)) from exc
     if len(values) != 1 or not isinstance(values[0], str):
         raise RequestError("대상 파라미터는 문자열 값 하나로 지정해야 합니다.")
     condition = values[0]
-    if condition.count("1=2") != 1:
-        raise RequestError("대상 파라미터에 거짓 조건 1=2가 정확히 한 번 필요합니다.")
+    if condition.count("1=1") != 1:
+        raise RequestError("대상 파라미터에 참 조건 1=1이 정확히 한 번 필요합니다.")
     # requests가 본문과 길이, 압축 방식을 다시 계산하도록 한다.
     for key in ("content-length", "transfer-encoding", "connection", "accept-encoding"):
         headers.pop(key, None)
@@ -112,10 +195,12 @@ def parse_request(raw, protocol, parameter):
         f"{protocol}://{host}{split.path}",
         headers,
         query,
-        data if method == "POST" else None,
+        data,
         location,
         parameter,
         condition,
+        body_kind,
+        path,
     )
 
 
@@ -127,7 +212,7 @@ class HTTPClient:
         self.verify = verify
         self.session = session if session is not None else requests.Session()
 
-    def size(self, condition):
+    def response(self, condition):
         try:
             response = self.session.request(
                 self.request.method,
@@ -145,7 +230,10 @@ class HTTPClient:
             ) from exc
         if not 200 <= response.status_code < 300:
             raise RequestError(f"HTTP {response.status_code} 응답: 실행을 중단합니다.")
-        return len(response.content)
+        return response
+
+    def size(self, condition):
+        return len(self.response(condition).content)
 
     def close(self):
         self.session.close()

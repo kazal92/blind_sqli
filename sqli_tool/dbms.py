@@ -27,16 +27,65 @@ class Dialect:
     def __init__(self, dbms):
         self.name = dbms
 
-    def length(self, expression):
-        if self.name == "mssql":
-            # LEN은 후행 공백을 제외하므로 끝에 구분자를 붙인다.
-            return f"LEN(CAST(({expression}) AS nvarchar(max)) + N'#') - 1"
-        return f"LENGTH(({expression}))"
+    def string_literal(self, value):
+        if self.name == "mysql":
+            return (
+                f"CONVERT(0x{value.encode('utf-8').hex()} USING utf8mb4)"
+                if value
+                else "''"
+            )
+        return literal(value)
 
-    def character(self, expression, position):
+    def as_text(self, expression):
+        value = f"({expression})"
+        return {
+            "mysql": f"CAST({value} AS CHAR CHARACTER SET utf8mb4)",
+            "postgresql": f"CAST({value} AS TEXT)",
+            "mssql": f"CAST({value} AS nvarchar(max)) COLLATE Latin1_General_100_BIN2",
+            "oracle": f"TO_NCHAR({value})",
+            "db2": f"CAST({value} AS VARCHAR(32672))",
+        }[self.name]
+
+    def length(self, expression):
+        value = f"({expression})"
         if self.name == "mssql":
-            return f"UNICODE(SUBSTRING(CAST(({expression}) AS nvarchar(max)),{position},1))"
-        return f"ASCII(SUBSTR(({expression}),{position},1))"
+            return f"LEN({value} + N'#') - 1"
+        if self.name == "mysql":
+            return f"CHAR_LENGTH({value})"
+        if self.name == "oracle":
+            return f"LENGTH4({value})"
+        if self.name == "db2":
+            return f"CHARACTER_LENGTH({value},CODEUNITS32)"
+        return f"LENGTH({value})"
+
+    def unit_hex(self, expression, position):
+        value = f"({expression})"
+        if self.name == "mssql":
+            return (
+                f"CONVERT(varchar(4),CONVERT(varbinary(2),"
+                f"SUBSTRING({value},{position},1)),2)"
+            )
+        if self.name == "oracle":
+            return f"RAWTOHEX(UTL_I18N.STRING_TO_RAW(SUBSTR4({value},{position},1),'AL32UTF8'))"
+        if self.name == "db2":
+            return f"HEX(VARCHAR(SUBSTRING({value},{position},1,CODEUNITS32),4))"
+        if self.name == "postgresql":
+            return (
+                f"UPPER(ENCODE(CONVERT_TO(SUBSTR({value},{position},1),'UTF8'),'hex'))"
+            )
+        return f"HEX(SUBSTRING({value},{position},1))"
+
+    def ascii_length(self, expression):
+        # HEX 출력만 대상으로 하므로 바이트·문자·UTF-16 길이가 모두 같다.
+        return (
+            f"LEN(({expression}))"
+            if self.name == "mssql"
+            else f"LENGTH(({expression}))"
+        )
+
+    def ascii_character(self, expression, position):
+        substring = "SUBSTRING" if self.name == "mssql" else "SUBSTR"
+        return f"ASCII({substring}(({expression}),{position},1))"
 
     def rows(self, label, source, value, order):
         count = f"SELECT COUNT(*) FROM {source}"
@@ -72,7 +121,10 @@ class Dialect:
             ],
             "db2": [("Current-DB", "SELECT CURRENT SERVER FROM SYSIBM.SYSDUMMY1")],
             "mssql": [("Version", "SELECT @@VERSION"), ("User", "SELECT SYSTEM_USER")],
-            "postgresql": [("Version", "SELECT version()"), ("User", "SELECT current_user")],
+            "postgresql": [
+                ("Version", "SELECT version()"),
+                ("User", "SELECT current_user"),
+            ],
         }
         single_row = {
             "oracle": "SELECT 1 FROM dual",
@@ -84,8 +136,8 @@ class Dialect:
         ]
 
     def metadata(self, mode, database=None, table=None, schema=None):
-        db = literal(database or "")
-        tab = literal(table or "")
+        db = self.string_literal(database or "")
+        tab = self.string_literal(table or "")
         if self.name == "mysql":
             sources = {
                 "dbs": ("information_schema.schemata", "schema_name", "schema_name"),
@@ -102,7 +154,11 @@ class Dialect:
             }
         elif self.name == "oracle":
             sources = {
-                "dbs": ("(SELECT DISTINCT owner FROM all_tables) owners", "owner", "owner"),
+                "dbs": (
+                    "(SELECT DISTINCT owner FROM all_tables) owners",
+                    "owner",
+                    "owner",
+                ),
                 "tables": (f"all_tables WHERE owner={db}", "table_name", "table_name"),
                 "columns": (
                     f"all_tab_columns WHERE owner={db} AND table_name={tab}",
@@ -156,17 +212,82 @@ class Dialect:
             raise ValueError("지원하지 않는 DBMS입니다.")
         return self.rows(mode, *sources[mode])
 
-    def dump(self, database, table, columns, order_by):
-        if self.name != "db2":
-            raise ValueError("덤프는 DB2만 지원합니다.")
-        source = ".".join(identifier(part, self.name) for part in [database, table])
-        order = identifier(order_by, self.name)
-        return [
-            self.rows(
-                column,
-                source,
-                f"COALESCE(CAST({identifier(column, self.name)} AS VARCHAR(32672)),'')",
-                order,
+    def column_type(self, database, table, column, schema=None):
+        db, tab, col = map(self.string_literal, (database, table, column))
+        if self.name in ("mysql", "postgresql"):
+            scope = (
+                f"table_schema={db}"
+                if self.name == "mysql"
+                else (
+                    f"table_catalog={db} AND table_schema={literal(schema or 'public')}"
+                )
             )
+            field = "data_type" if self.name == "mysql" else "udt_name"
+            source = (
+                f"information_schema.columns WHERE {scope} "
+                f"AND table_name={tab} AND column_name={col}"
+            )
+        elif self.name == "oracle":
+            field = "data_type"
+            source = f"all_tab_columns WHERE owner={db} AND table_name={tab} AND column_name={col}"
+        elif self.name == "db2":
+            field = "typename"
+            source = f"syscat.columns WHERE tabschema={db} AND tabname={tab} AND colname={col}"
+        else:
+            prefix = identifier(database, self.name)
+            field = "ty.name"
+            source = (
+                f"{prefix}.sys.columns c JOIN {prefix}.sys.tables t ON c.object_id=t.object_id "
+                f"JOIN {prefix}.sys.schemas s ON t.schema_id=s.schema_id "
+                f"JOIN {prefix}.sys.types ty ON c.user_type_id=ty.user_type_id "
+                f"WHERE s.name={literal(schema or 'dbo')} AND t.name={tab} AND c.name={col}"
+            )
+        return self.rows("type", source, field, field)
+
+    def supports_type(self, name):
+        name = name.lower().strip()
+        allowed = {
+            "mysql": "char varchar tinytext text mediumtext longtext enum set tinyint smallint "
+            "mediumint int integer bigint decimal numeric float double real date time "
+            "datetime timestamp year json",
+            "postgresql": "text varchar bpchar name int2 int4 int8 float4 float8 numeric money "
+            "bool date time timetz timestamp timestamptz interval uuid json jsonb xml",
+            "mssql": "char varchar nchar nvarchar text ntext tinyint smallint int bigint bit "
+            "decimal numeric float real money smallmoney date time datetime datetime2 "
+            "smalldatetime datetimeoffset uniqueidentifier xml",
+            "oracle": "char nchar varchar2 nvarchar2 number float binary_float binary_double "
+            "date rowid urowid",
+            "db2": "char character varchar graphic vargraphic smallint integer bigint decimal "
+            "decfloat real double date time timestamp boolean",
+        }
+        return name in allowed[self.name].split() or (
+            self.name == "oracle" and name.startswith("timestamp")
+        )
+
+    def supports_order_type(self, name):
+        excluded = {"postgresql": {"json", "xml"}, "mssql": {"text", "ntext", "xml"}}
+        return name.lower().strip() not in excluded.get(self.name, set())
+
+    def table_source(self, database, table, schema=None):
+        parts = [database, table]
+        if self.name == "mssql":
+            parts = [database, schema or "dbo", table]
+        elif self.name == "postgresql":
+            parts = [schema or "public", table]
+        return ".".join(identifier(part, self.name) for part in parts)
+
+    def duplicate_order(self, database, table, order_by, schema=None):
+        source = self.table_source(database, table, schema)
+        order = ",".join(identifier(name, self.name) for name in order_by)
+        return (
+            f"SELECT COUNT(*) FROM (SELECT {order} FROM {source} "
+            f"GROUP BY {order} HAVING COUNT(*)>1) duplicate_keys"
+        )
+
+    def dump(self, database, table, columns, order_by, schema=None):
+        source = self.table_source(database, table, schema)
+        order = ",".join(identifier(name, self.name) for name in order_by)
+        return [
+            self.rows(column, source, identifier(column, self.name), order)
             for column in columns
         ]

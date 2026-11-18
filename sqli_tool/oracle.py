@@ -1,4 +1,4 @@
-"""반복 측정한 응답 크기로 참·거짓을 판별한다."""
+"""응답 크기 또는 문자열로 참·거짓을 판별한다."""
 
 
 class ExecutionError(ValueError):
@@ -6,78 +6,78 @@ class ExecutionError(ValueError):
 
 
 class SizeOracle:
-    SAMPLE_COUNT = 5
-    ATTEMPTS = 3
     CHECK_INTERVAL = 50
 
-    def __init__(self, client, threshold):
+    def __init__(self, client):
         self.client = client
-        self.threshold = threshold
-        self.ranges = {}
+        self.references = {}
         self.checks = 0
 
-    def size(self, predicate):
-        condition = self.client.request.condition.replace("1=2", predicate)
+    def read(self, predicate):
+        condition = self.client.request.condition.replace("1=1", predicate)
         return self.client.size(condition)
 
     def calibrate(self):
-        samples = {False: [], True: []}
-        # 번갈아 측정해 시간에 따른 페이지 변동도 표본에 포함한다.
-        for _ in range(self.SAMPLE_COUNT):
-            for truth in (False, True):
-                samples[truth].append(self.size("1=1" if truth else "1=2"))
-        observed = {truth: (min(values), max(values)) for truth, values in samples.items()}
-        for truth in (False, True):
-            low, high = observed[truth]
-            print(f"{'참' if truth else '거짓'} 응답: {low}~{high} bytes (5회 측정)")
-        lower, upper = sorted(observed, key=lambda truth: observed[truth][0])
-        gap = observed[upper][0] - observed[lower][1]
-        # 관측 변동 폭만큼 여유를 주되, 고정 응답에도 1바이트 여유를 둔다.
-        for truth, (low, high) in observed.items():
-            padding = max(1, high - low)
-            self.ranges[truth] = (max(0, low - padding), high + padding)
-        if gap <= self.threshold or self.ranges[lower][1] >= self.ranges[upper][0]:
+        self.references = {True: self.read("1=1"), False: self.read("1=2")}
+        for truth, size in self.references.items():
+            print(f"{'참' if truth else '거짓'} 응답: {size} bytes (1회 측정)")
+        if self.references[True] == self.references[False]:
             raise ExecutionError(
-                "참·거짓 응답을 안정적으로 구분할 수 없습니다. "
-                "응답 크기 범위·변동 폭과 --threshold를 확인하세요."
+                "참·거짓 응답 크기가 같습니다. --string 또는 --not-string을 지정하세요."
             )
-        print(f"판별 방향: 참 응답이 더 {'큼' if upper else '짧음'}")
-        for truth in (False, True):
-            low, high = self.ranges[truth]
-            print(f"{'참' if truth else '거짓'} 허용 범위: {low}~{high} bytes")
-        print("범위 밖 응답은 최대 3회 측정 후 중단합니다.")
+        print("측정한 참·거짓 크기와 정확히 일치하는 응답으로 판별합니다.")
 
-    def classify(self, size):
-        for truth, (low, high) in self.ranges.items():
-            if low <= size <= high:
+    def classify(self, value):
+        for truth, reference in self.references.items():
+            if value == reference:
                 return truth
         return None
 
     def verify(self):
-        # 기준이 달라져도 자동 재학습하지 않는다. 앞선 추출의 신뢰성이 깨질 수 있다.
-        for truth in (False, True):
-            for _ in range(self.ATTEMPTS):
-                result = self.classify(self.size("1=1" if truth else "1=2"))
-                if result is truth:
-                    break
-                if result is not None:
-                    raise ExecutionError("참·거짓 기준이 변경되었습니다. 세션·페이지를 확인하세요.")
-            else:
-                raise ExecutionError("기준 응답 크기가 허용 범위를 벗어났습니다. 실행을 중단합니다.")
+        for truth in (True, False):
+            if self.classify(self.read("1=1" if truth else "1=2")) is not truth:
+                raise ExecutionError(
+                    "참·거짓 기준이 변경되었습니다. 세션·페이지를 확인하세요."
+                )
         self.checks = 0
 
     def check(self, predicate):
-        if not self.ranges:
-            raise ExecutionError("응답 크기 측정이 필요합니다.")
+        if not self.references:
+            raise ExecutionError("참·거짓 기준 확인이 필요합니다.")
         if self.checks >= self.CHECK_INTERVAL:
             self.verify()
-        for _ in range(self.ATTEMPTS):
-            size = self.size(predicate)
-            result = self.classify(size)
-            if result is not None:
-                self.checks += 1
-                return result
-        raise ExecutionError(
-            f"응답 크기 {size} bytes를 참·거짓으로 판별할 수 없습니다. "
-            "3회 측정 후 실행을 중단합니다."
-        )
+        result = self.classify(self.read(predicate))
+        if result is None:
+            raise ExecutionError(
+                "응답을 참·거짓으로 판별할 수 없습니다. 실행을 중단합니다."
+            )
+        self.checks += 1
+        return result
+
+
+class StringOracle(SizeOracle):
+    def __init__(self, client, string=None, not_string=None):
+        super().__init__(client)
+        self.string = string
+        self.not_string = not_string
+
+    def read(self, predicate):
+        condition = self.client.request.condition.replace("1=1", predicate)
+        return self.client.response(condition).text
+
+    def classify(self, value):
+        true_match = self.string in value if self.string is not None else None
+        false_match = self.not_string in value if self.not_string is not None else None
+        if true_match is not None and false_match is not None:
+            return true_match if true_match != false_match else None
+        return true_match if true_match is not None else not false_match
+
+    def calibrate(self):
+        for truth in (True, False):
+            response = self.read("1=1" if truth else "1=2")
+            if self.classify(response) is not truth:
+                raise ExecutionError(
+                    "참·거짓 응답이 지정한 문자열 기준과 맞지 않습니다. 판별 문자열을 확인하세요."
+                )
+        self.references = {True: True, False: False}
+        print("문자열 판별: 참·거짓 요청 각 1회 확인 완료 (대소문자 구분)")

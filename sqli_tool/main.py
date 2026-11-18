@@ -17,7 +17,7 @@ def main(argv=None):
     store = None
     try:
         raw = Path(args.request_file).read_text(encoding="utf-8-sig")
-        request = parse_request(raw, args.schema, args.parameter)
+        request = parse_request(raw, args.schema, args.parameter, args.location)
         # 결과 파일을 열 수 없는 경우 네트워크 실행 전에 실패한다.
         store = ResultStore(args.result_db)
         client = HTTPClient(request, args.timeout, args.proxy, not args.insecure)

@@ -42,14 +42,16 @@ class ResultStore:
                     args.dbms,
                     args.mode,
                     args.select_db,
-                    args.db_schema or {"mssql": "dbo", "postgresql": "public"}.get(args.dbms),
+                    args.db_schema
+                    or {"mssql": "dbo", "postgresql": "public"}.get(args.dbms),
                     json.dumps(results, ensure_ascii=False),
                 ),
             )
             if args.basic:
                 for field, value in results.items():
                     self.connection.execute(
-                        "INSERT OR REPLACE INTO basic_results VALUES (?,?)", (field, value)
+                        "INSERT OR REPLACE INTO basic_results VALUES (?,?)",
+                        (field, value),
                     )
                 if "Version" in results or "User" in results:
                     self.connection.execute("DELETE FROM basic_info")

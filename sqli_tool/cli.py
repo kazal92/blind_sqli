@@ -42,7 +42,9 @@ def get_arguments(argv=None):
     parser = KoreanParser(description="Blind SQL Injection 실습 도구", add_help=False)
     parser._optionals.title = "옵션"
     parser.add_argument("-h", "--help", action="help", help="도움말을 표시하고 종료")
-    parser.add_argument("-r", "--request-file", required=True, help="HTTP 요청 파일 (UTF-8)")
+    parser.add_argument(
+        "-r", "--request-file", required=True, help="HTTP 요청 파일 (UTF-8)"
+    )
     parser.add_argument(
         "-s",
         dest="schema",
@@ -53,9 +55,20 @@ def get_arguments(argv=None):
     )
     parser.add_argument("-p", dest="parameter", required=True, help="대상 파라미터")
     parser.add_argument(
-        "-d", dest="result_db", default="result.db", help="결과 SQLite 파일 (기본: result.db)"
+        "--location",
+        choices=["auto", "query", "form", "json", "xml"],
+        default="auto",
+        help="대상 위치. JSON은 -p에 /login/password 같은 JSON Pointer 사용 가능",
     )
-    parser.add_argument("-D", dest="select_db", help="DB 이름; Oracle·DB2는 스키마/소유자")
+    parser.add_argument(
+        "-d",
+        dest="result_db",
+        default="result.db",
+        help="결과 SQLite 파일 (기본: result.db)",
+    )
+    parser.add_argument(
+        "-D", dest="select_db", help="DB 이름; Oracle·DB2는 스키마/소유자"
+    )
     parser.add_argument(
         "-T", dest="select_table", type=names, help="테이블 이름; 쉼표로 여러 개 지정"
     )
@@ -69,45 +82,58 @@ def get_arguments(argv=None):
         choices=["mysql", "oracle", "db2", "mssql", "postgresql"],
         help="DBMS 종류",
     )
-    parser.add_argument("--db-schema", help="MSSQL·PostgreSQL 스키마 (기본: dbo·public)")
-    parser.add_argument("--proxy", help="프록시 URL 또는 host:port")
-    parser.add_argument("--timeout", type=positive_float, default=30, help="요청 제한 시간(초)")
     parser.add_argument(
-        "--max-len", type=positive_int, default=256, help="문자열 길이 상한 (초과하면 중단)"
+        "--db-schema", help="MSSQL·PostgreSQL 스키마 (기본: dbo·public)"
+    )
+    parser.add_argument("--proxy", help="프록시 URL 또는 host:port")
+    parser.add_argument(
+        "--timeout", type=positive_float, default=30, help="요청 제한 시간(초)"
+    )
+    parser.add_argument(
+        "--max-len",
+        type=positive_int,
+        default=256,
+        help="문자열 길이 상한 (초과하면 중단)",
     )
     parser.add_argument(
         "--max-rows", type=positive_int, default=1000, help="행 수 상한 (초과하면 중단)"
     )
+    parser.add_argument("--string", help="참 응답 본문에 있는 문자열 (대소문자 구분)")
     parser.add_argument(
-        "--threshold", type=positive_int, default=20,
-        help="초기 참·거짓 크기 범위 사이에 필요한 최소 간격(바이트, 이 값 초과)",
+        "--not-string", help="거짓 응답 본문에 있는 문자열 (대소문자 구분)"
     )
     parser.add_argument(
         "--insecure", action="store_true", help="실습 환경의 HTTPS 인증서 검증 생략"
     )
-    parser.add_argument("--order-by", help="DB2 덤프 행 정렬용 고유 컬럼")
+    parser.add_argument(
+        "--order-by", type=names, help="덤프 정렬용 고유 컬럼; 복합키는 쉼표로 구분"
+    )
     mode = parser.add_mutually_exclusive_group(required=True)
     for flag, description in [
         ("basic", "기본 정보"),
         ("dbs", "DB/소유자 목록"),
         ("tables", "테이블 목록"),
         ("columns", "컬럼 목록"),
-        ("dump", "DB2 데이터 덤프"),
+        ("dump", "데이터 덤프 (모든 지원 DBMS)"),
     ]:
         mode.add_argument("--" + flag, action="store_true", help=description)
     args = parser.parse_args(argv)
+    if args.string == "" or args.not_string == "":
+        parser.error("판별 문자열은 빈 문자열일 수 없습니다.")
     args.mode = next(
-        flag for flag in ["basic", "dbs", "tables", "columns", "dump"] if getattr(args, flag)
+        flag
+        for flag in ["basic", "dbs", "tables", "columns", "dump"]
+        if getattr(args, flag)
     )
     if args.mode in ("tables", "columns", "dump") and not args.select_db:
         parser.error("이 작업에는 -D가 필요합니다.")
     if args.mode in ("columns", "dump") and not args.select_table:
         parser.error("이 작업에는 -T가 필요합니다.")
     if args.dump:
-        if args.dbms != "db2":
-            parser.error("--dump는 현재 DB2만 지원합니다.")
         if len(args.select_table) != 1 or not args.select_column or not args.order_by:
-            parser.error("--dump에는 테이블 하나, -C, 고유 컬럼을 지정한 --order-by가 필요합니다.")
+            parser.error(
+                "--dump에는 테이블 하나, -C, 고유 키를 지정한 --order-by가 필요합니다."
+            )
     elif args.select_column or args.order_by:
         parser.error("-C와 --order-by는 --dump와 함께 사용하세요.")
     if args.db_schema and args.dbms not in ("mssql", "postgresql"):

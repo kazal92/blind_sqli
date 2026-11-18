@@ -7,7 +7,7 @@ HTTP 요청 파일을 읽어 참·거짓 응답의 크기 또는 문자열로 �
 - 한글·이모지 추출, NULL 보존, 복합 정렬키·중복 검사, 추출 값 재검증
 - 기본 크기 판별은 참·거짓 요청 **각 1회**로 시작하며 고정 20바이트 임계값을 사용하지 않음
 
-저장소에는 CLI 소스·의존성·사용법만 포함합니다. 테스트 코드·실습 서버·Docker 환경은 포함하지 않습니다.
+저장소에는 CLI 소스·의존성·사용법·회귀 테스트를 포함합니다. 실습 서버·Docker 환경은 포함하지 않습니다.
 
 ## 설치
 
@@ -277,7 +277,7 @@ ORDER BY id DESC;
 
 ## 검증 범위와 파일 구성
 
-개발 검증은 저장소 밖에서 수행합니다. 요청 파싱·변환, 크기·문자열 판별, 한글·이모지·NULL 보존, 정렬키 검사, 실패 시 저장 취소 등을 검사했습니다. MySQL·PostgreSQL 구문은 변환 후 SQLite에서 실제 SQL 평가를 수행해 추출·저장 흐름을 확인했습니다. 이는 해당 DB 서버에서 실행한 통합 테스트와 다릅니다.
+회귀 테스트는 `tests/`의 unittest로 실행합니다(`python -m unittest discover -s tests -v`). 요청 파싱·변환, 크기·문자열 판별, 한글·이모지·NULL 보존, 정렬키 검사, 실패 시 저장 취소 등을 검사합니다. MySQL·PostgreSQL 구문은 변환 후 SQLite에서 실제 SQL 평가를 수행해 추출·저장 흐름을 확인했습니다. 이는 해당 DB 서버에서 실행한 통합 테스트와 다릅니다.
 
 MySQL·PostgreSQL·T-SQL·Oracle 생성 SQL은 SQLGlot 구문 검사를 수행했고, DB2는 생성 구조와 공식 함수 문서를 대조했습니다. 현재 환경의 Docker 권한 제한으로 5개 실제 DB 서버 검증은 수행하지 못했습니다. DBMS·버전·권한·문자셋에 따른 추가 확인이 필요합니다.
 
@@ -292,6 +292,8 @@ sqli_tool/
   engine.py             추출·덤프·결과 검증
   storage.py            SQLite 저장
   main.py               실행·종료 처리
+tests/
+  test_regressions.py   오프라인 회귀 테스트 (unittest)
 requirements.txt        실행 의존성
 README.md               설치·사용법
 .gitignore              요청·결과·캐시 제외

@@ -77,6 +77,12 @@ class ResultStore:
                     )
             elif args.dump:
                 table = args.select_table[0]
+                # 같은 DB·테이블의 이전 덤프를 지워 최신 결과만 남긴다.
+                # 실행 이력은 runs.results_json에 보존된다.
+                self.connection.execute(
+                    "DELETE FROM data_dump WHERE db_name=? AND table_name=?",
+                    (args.select_db, table),
+                )
                 for index, row in enumerate(results[table], 1):
                     self.connection.executemany(
                         "INSERT INTO data_dump (db_name,table_name,column_name,row_index,data) VALUES (?,?,?,?,?)",

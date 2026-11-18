@@ -95,6 +95,29 @@ class RequestRegressions(unittest.TestCase):
                 with self.assertRaises(RequestError):
                     HTTPClient(request, session=session).response('1=2')
 
+    def test_xml_element_and_attribute_targets(self):
+        raw = ('POST /api/login HTTP/1.1\r\nHost:localhost\r\n'
+               'Content-Type: application/xml\r\n\r\n'
+               '<request><login><password>x 1=1</password></login><keep>k</keep></request>')
+        request = parse_request(raw, 'http', './login/password', 'xml')
+        self.assertEqual(request.condition, 'x 1=1')
+        self.assertIn(b'<password>1=2</password>', request.arguments('1=2')['data'])
+        self.assertIn(b'<keep>k</keep>', request.arguments('1=2')['data'])
+
+        attr_raw = ('POST /api/login HTTP/1.1\r\nHost:localhost\r\n'
+                    'Content-Type: application/xml\r\n\r\n'
+                    '<request><login password="x 1=1"/><keep>k</keep></request>')
+        attr = parse_request(attr_raw, 'http', './login/@password', 'xml')
+        self.assertEqual(attr.condition, 'x 1=1')
+        self.assertIn(b'password="1=2"', attr.arguments('1=2')['data'])
+
+    def test_xml_target_must_be_unique(self):
+        raw = ('POST /api/login HTTP/1.1\r\nHost:localhost\r\n'
+               'Content-Type: application/xml\r\n\r\n'
+               '<r><p>x 1=1</p><p>y</p></r>')
+        with self.assertRaises(RequestError):
+            parse_request(raw, 'http', './p', 'xml')
+
 
 class ExecutionRegressions(unittest.TestCase):
     def store(self):
@@ -167,6 +190,19 @@ class ExecutionRegressions(unittest.TestCase):
                 with self.assertRaises(SystemExit) as error:
                     get_arguments(['-r', 'unused.txt', '-p', 'password', '--dbms', 'db2', *extra])
                 self.assertEqual(error.exception.code, 2)
+
+    def test_dump_replaces_prior_rows(self):
+        options = args('mysql', 'dump', ('-D', 'lab', '-T', 'users', '-C', 'name',
+                                         '--order-by', 'id'))
+        store = self.store()
+        store.save(options, {'users': [{'name': 'alice'}]})
+        store.save(options, {'users': [{'name': 'bob'}]})
+        self.assertEqual(
+            store.connection.execute(
+                'SELECT column_name, row_index, data FROM data_dump'
+            ).fetchall(),
+            [('name', 1, 'bob')],
+        )
 
 
 if __name__ == '__main__':
